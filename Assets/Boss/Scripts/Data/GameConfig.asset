@@ -12,25 +12,50 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fad8912a20c2dcb459c84e606c3197db, type: 3}
   m_Name: GameConfig
   m_EditorClassIdentifier: 
-  loopDuration: 10
+  loopDuration: 30
   maxLosses: 3
-  spawnWindow: 52
+  bonusOrbsPerLoop: 2
+  spawnWindow: 50
   spawnCurve: 0.7
   spawnStartDelay: 0.4
-  mapSize: {x: 16, y: 9}
+  map:
+    width: 36
+    height: 36
+    baseCell: {x: 17, y: 17}
+    baseSize: 2
+    spawnRing: 1
+    reservedRing: 1
+    playerStart: {x: 18, y: 19.6}
+  flowField:
+    rebuildInterval: 0.5
+    towerHpDivisor: 50
+    diagonalCost: 1.414
+  cameraView:
+    viewSize: {x: 24, y: 13}
+    followSharpness: 8
+    fitPadding: 0.5
+  towerTypes:
+  - {fileID: 11400000, guid: b09c3d2cc0584276801384c01171113c, type: 2}
+  - {fileID: 11400000, guid: c48720f98ec34ef3bde2c1ecdd55c0cb, type: 2}
+  - {fileID: 11400000, guid: 80b82ab683e14953aaf5a88168419e04, type: 2}
+  buildInput:
+    dragThresholdPixels: 10
+    wheelZoomStep: 1.15
+    keyZoomPerSecond: 2.5
+    keyPanSpeed: 1.2
   player:
     maxHP: 100
     damage: 10
     attackRate: 1.2
     attackRange: 3
-    moveSpeed: 3.6
+    moveSpeed: 4.5
     pickupRadius: 1
-    bodyRadius: 0.28
+    bodyRadius: 0.26
     projectileSpeed: 13
   baseStats:
     damage: 8
     attackRate: 1
-    attackRange: 3
+    attackRange: 3.5
     projectileSpeed: 11
   melee:
     hp: 30
@@ -39,6 +64,7 @@ MonoBehaviour:
     damage: 10
     attackInterval: 0
     shootRange: 0
+    baseShootRange: 0
     bodyRadius: 0.26
   ranged:
     hp: 20
@@ -47,5 +73,19 @@ MonoBehaviour:
     damage: 6
     attackInterval: 1.5
     shootRange: 3
+    baseShootRange: 2.5
     bodyRadius: 0.24
-  pathSpread: 0.5
+  monsterWallRadius: 0.2
+  monsterCellJitter: 0.2
+  monsterContactSlack: 0.05
+  bossSlowFactor: 0.5
+  expCurve:
+  - upToLevel: 10
+    expPerLevel: 6
+  - upToLevel: 20
+    expPerLevel: 10
+  - upToLevel: 999
+    expPerLevel: 14
+  upgradeChoices: 3
+  gemMagnetSpeed: 10
+  gemCollectDistance: 0.5

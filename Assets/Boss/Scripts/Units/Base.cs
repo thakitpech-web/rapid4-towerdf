@@ -1,22 +1,44 @@
 using UnityEngine;
 
-/// <summary>The base at the end of the path. Auto-attacks the nearest enemy in range.</summary>
+/// The 2×2 base in the centre of the map. Auto-attacks the nearest enemy in range.
 public class Base : Unit, IHealable
 {
     [SerializeField] private Projectile projectilePrefab;
 
     private float attackCooldown;
 
-    public float AttackDamage => Config.baseStats.damage;   // tower damage passive is added in step 4
+    public float AttackDamage =>
+        Config.baseStats.damage * (1f + GameManager.Instance.Upgrades.GetModifier(UpgradeType.TowerDamage));
     public float AttackRange => Config.baseStats.attackRange;
-    public bool IsInvincible { get; set; }                  // set by the Base Invincible skill (step 7)
+    public bool IsInvincible { get; set; }                  // set by the Base Invincible skill (step 9)
 
-    /// <summary>Full HP for a new loop. Max HP comes from the difficulty preset (plus passives later).</summary>
+    /// Grid cells the base fills (2×2 at the map centre).
+    public Vector2Int[] Cells { get; private set; }
+
+    /// Moves the base onto its grid cells. Called once by GameManager after the grid is ready.
+    public void PlaceOn(GridMap grid)
+    {
+        RectInt r = grid.BaseCells;
+        Cells = new Vector2Int[r.width * r.height];
+        int i = 0;
+        foreach (Vector2Int c in r.allPositionsWithin) Cells[i++] = c;
+
+        transform.position = grid.BaseCenter;
+    }
+
+    /// Full HP for a new loop. Max HP comes from the difficulty preset (plus passives later).
     public void ResetForLoop(float newMaxHP)
     {
         RestoreFull(newMaxHP);
         attackCooldown = 0f;
         IsInvincible = false;
+    }
+
+    /// Base max HP passive picked mid-loop: the increase is also added to current HP.
+    public void RaiseMaxHP(float newMaxHP)
+    {
+        if (IsAlive()) hp += newMaxHP - maxHP;
+        maxHP = newMaxHP;
     }
 
     private void Update()
@@ -38,9 +60,13 @@ public class Base : Unit, IHealable
         attackCooldown = 1f / Config.baseStats.attackRate;
     }
 
+    /// Time.time of the last damage taken (the base arrow turns red while it is recent).
+    public float LastHitTime { get; private set; } = float.NegativeInfinity;
+
     public override void TakeDamage(float amount)
     {
-        if (IsInvincible) return;
+        if (IsInvincible || amount <= 0f || !IsAlive()) return;
+        LastHitTime = Time.time;
         base.TakeDamage(amount);
     }
 

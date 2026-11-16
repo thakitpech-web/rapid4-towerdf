@@ -103,3 +103,4 @@ MonoBehaviour:
   hp: 0
   maxHP: 0
   shield: 0
+  gemPrefab: {fileID: 174762212930943172, guid: 6d6643f2eb203674db5277dafd1978ba, type: 3}

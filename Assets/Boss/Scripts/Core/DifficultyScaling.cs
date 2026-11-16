@@ -1,6 +1,6 @@
 using UnityEngine;
 
-/// <summary>Monster stat scaling per loop and difficulty preset. Loops are 1-based.</summary>
+/// Monster stat scaling per loop and difficulty preset. Loops are 1-based.
 public static class DifficultyScaling
 {
     public static float EnemyHP(float baseHp, int loop, DifficultyPreset d)

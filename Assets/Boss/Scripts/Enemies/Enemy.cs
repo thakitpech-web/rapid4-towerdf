@@ -8,36 +8,46 @@ public enum EnemyType
     Boss
 }
 
-/// <summary>A monster walking the path toward the base.</summary>
+/// A monster that spawns on a map edge and walks to the base along the flow field.
+/// When the next cell is a tower or the base, it stops and attacks it instead of moving.
 public abstract class Enemy : Unit
 {
     private static readonly List<Enemy> active = new List<Enemy>();
 
-    /// <summary>Every living enemy in the scene.</summary>
+    /// Every living enemy in the scene.
     public static IReadOnlyList<Enemy> Active => active;
 
     public float Speed { get; protected set; }
-    public float PathProgress { get; protected set; }
     public float Damage { get; protected set; }
     public int ExpReward { get; protected set; }
+
+    /// Radius used for projectile hits and touching the character.
     public float BodyRadius { get; protected set; }
 
-    protected Path path;
-    private float laneOffset;
+    /// Collision radius against towers and the base.
+    public float Radius => Config.monsterWallRadius;
 
-    /// <summary>Called by EnemySpawner right after Instantiate. HP and damage are already scaled.</summary>
-    public void Init(Path path, float maxHP, float damage, float speed, int expReward, float bodyRadius,
-                     float laneOffset, float startProgress = 0f)
+    /// Flow-field distance to the base from this enemy's cell (lower = further ahead).
+    public float FlowDistance => GameManager.Instance.Flow.DistanceAt(GameManager.Instance.Grid.WorldToCell(Position));
+
+    [Tooltip("Gem dropped on death. Leave empty for monsters that give no exp.")]
+    [SerializeField] private ExpGem gemPrefab;
+
+    // Fixed per monster, so monsters walking the same cells do not stack.
+    private Vector2 cellOffset;
+
+    /// Fraction of the enemy slow passive this monster receives (the boss overrides this).
+    protected virtual float SlowFactor => 1f;
+
+    /// Called by EnemySpawner right after Instantiate. HP and damage are already scaled.
+    public void Init(float maxHP, float damage, float speed, int expReward, float bodyRadius, Vector2 cellOffset)
     {
-        this.path = path;
         RestoreFull(maxHP);
         Damage = damage;
         Speed = speed;
         ExpReward = expReward;
         BodyRadius = bodyRadius;
-        this.laneOffset = laneOffset;
-        PathProgress = startProgress;
-        PlaceOnPath();
+        this.cellOffset = cellOffset;
     }
 
     protected virtual void OnEnable() => active.Add(this);
@@ -45,39 +55,46 @@ public abstract class Enemy : Unit
 
     private void Update()
     {
-        if (!IsSurvivalPhase || !IsAlive() || path == null) return;
+        if (!IsSurvivalPhase || !IsAlive()) return;
         Tick(Time.deltaTime);
     }
 
-    /// <summary>Default behaviour: walk the path, then attack the base once at the end.</summary>
-    protected virtual void Tick(float dt)
+    /// Default behaviour: follow the flow field, attacking whatever blocks the next cell.
+    protected virtual void Tick(float dt) => Move(GameManager.Instance.Flow, dt);
+
+    /// Steps toward the next flow-field cell. If that cell is a tower or the base, walks up to it and
+    /// calls Attack(target) once touching it. Slowed by the enemy slow passive.
+    public void Move(FlowField field, float dt)
     {
-        if (path.IsEnd(PathProgress)) Attack();
-        else FollowPath(path, dt);
+        GridMap grid = GameManager.Instance.Grid;
+        Vector2Int cell = grid.ClampCell(grid.WorldToCell(Position));
+        Vector2Int next = field.NextStep(cell);
+
+        Unit blocker = grid.BlockerAt(next);
+        if (blocker != null && GridMap.DistanceToCell(Position, next) <= Radius + Config.monsterContactSlack)
+        {
+            Attack(blocker);
+            return;
+        }
+
+        Vector2 target = grid.CellCenter(next) + (blocker == null ? cellOffset : Vector2.zero);
+        float slow = GameManager.Instance.Upgrades.GetModifier(UpgradeType.EnemySlow) * SlowFactor;
+        Vector2 pos = Vector2.MoveTowards(Position, target, Speed * (1f - slow) * dt);
+        transform.position = grid.ResolveCollision(pos, Radius);
     }
 
-    public void FollowPath(Path path, float dt)
-    {
-        PathProgress += Speed * dt;   // enemy slow passive is added in step 4
-        PlaceOnPath();
-    }
-
-    public abstract void Attack();
+    /// Hits a tower or the base that blocks the way.
+    public abstract void Attack(Unit target);
 
     public override void Die()
     {
-        base.Die();                   // exp gem drop is added in step 4
+        base.Die();
+        if (ExpReward > 0 && gemPrefab != null)
+            Instantiate(gemPrefab, transform.position, Quaternion.identity).Init(ExpReward);
         Destroy(gameObject);
     }
 
-    private void PlaceOnPath()
-    {
-        Vector2 dir = path.DirectionAt(PathProgress);
-        Vector2 normal = new Vector2(-dir.y, dir.x);
-        transform.position = path.PositionAt(PathProgress) + normal * laneOffset;
-    }
-
-    /// <summary>The closest living enemy within range of a point, or null.</summary>
+    /// The closest living enemy within range of a point, or null.
     public static Enemy FindNearest(Vector2 from, float range)
     {
         Enemy best = null;

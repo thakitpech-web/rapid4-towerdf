@@ -1,12 +1,23 @@
+using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>Shows and hides the panels. GameManager tells it what to show; it never changes phase.</summary>
+/// Shows and hides the panels. GameManager tells it what to show; it never changes phase.
 public class UIManager : MonoBehaviour
 {
     public static UIManager Instance { get; private set; }
 
     [SerializeField] private ResultPanel resultPanel;
     [SerializeField] private BuildPanel buildPanel;
+    [SerializeField] private LevelUpPanel levelUpPanel;
+
+    [Header("Survival overlays (they show and hide themselves)")]
+    [SerializeField] private MinimapView minimap;
+    [SerializeField] private EdgeArrow baseArrow;
+    [SerializeField] private SkillBarView skillBar;
+
+    public MinimapView Minimap => minimap;
+    public EdgeArrow BaseArrow => baseArrow;
+    public SkillBarView SkillBar => skillBar;
 
     private void Awake()
     {
@@ -22,25 +33,31 @@ public class UIManager : MonoBehaviour
     {
         resultPanel.Hide();
         buildPanel.Hide();
+        levelUpPanel.Hide();
     }
 
-    public void ShowResult(bool won, string reason, int orbsGained)
+    public void ShowLevelUp(List<Upgrade> choices) => levelUpPanel.Show(choices);
+
+    public void HideLevelUp() => levelUpPanel.Hide();
+
+    public void ShowResult(bool won, string reason, int levelOrbs, int bonusOrbs)
     {
         GameManager gm = GameManager.Instance;
         HidePanels();
 
+        string orbs = $"+{levelOrbs} orb from levels, +{bonusOrbs} bonus (total {gm.Orbs})";
         if (won)
         {
             resultPanel.Show(
                 $"Loop {gm.CurrentLoop - 1} cleared",
-                $"{reason}. +{orbsGained} orb (total {gm.Orbs}). Build before loop {gm.CurrentLoop}.",
+                $"{reason}. {orbs}. Build before loop {gm.CurrentLoop}.",
                 "Build towers");
         }
         else
         {
             resultPanel.Show(
                 $"Loop {gm.CurrentLoop} lost",
-                $"{reason}. Losses {gm.Losses}/{gm.MaxLosses}. +{orbsGained} orb (total {gm.Orbs}). The same loop will be replayed.",
+                $"{reason}. Losses {gm.Losses}/{gm.MaxLosses}. {orbs}. The same loop will be replayed.",
                 "Build towers");
         }
     }

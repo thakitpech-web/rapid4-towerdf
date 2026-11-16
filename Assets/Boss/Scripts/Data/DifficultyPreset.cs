@@ -1,9 +1,7 @@
 using UnityEngine;
 
-/// <summary>
 /// One difficulty preset (GAME_DESIGN.md section 7, "Difficulty presets").
 /// Make three assets: Design doc, Normal (default), Hard.
-/// </summary>
 [CreateAssetMenu(fileName = "DifficultyPreset", menuName = "One Minute Siege/Difficulty Preset")]
 public class DifficultyPreset : ScriptableObject
 {

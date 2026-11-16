@@ -1,38 +1,64 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-/// <summary>The character: moves with the Move action and auto-attacks the nearest enemy in range.</summary>
+/// The character: moves with the Move action and auto-attacks the nearest enemy in range.
+/// Holds up to two active skills unlocked from level-up cards.
 public class PlayerCharacter : Unit
 {
     [SerializeField] private InputActionReference moveAction;
     [SerializeField] private Projectile projectilePrefab;
 
-    private Vector2 startPosition;
     private float attackCooldown;
+    private readonly List<ActiveSkill> skills = new List<ActiveSkill>();
+
+    public IReadOnlyList<ActiveSkill> Skills => skills;
+
+    /// Set by the Rapid Fire skill while active.
+    public float AttackRateMultiplier { get; set; } = 1f;
 
     public float MoveSpeed => Config.player.moveSpeed;
-    public float AttackDamage => Config.player.damage;     // character damage passive is added in step 4
-    public float AttackRate => Config.player.attackRate;   // rapid fire skill is added in step 7
+    public float AttackDamage => Config.player.damage * (1f + Modifier(UpgradeType.CharacterDamage));
+    public float AttackRate => Config.player.attackRate * AttackRateMultiplier;
     public float AttackRange => Config.player.attackRange;
-    public float PickupRadius => Config.player.pickupRadius;
+    public float PickupRadius => Config.player.pickupRadius * (1f + Modifier(UpgradeType.PickupRadius));
     public float BodyRadius => Config.player.bodyRadius;
-
-    private void Awake()
-    {
-        startPosition = transform.position;
-    }
 
     private void OnEnable()
     {
         if (moveAction != null) moveAction.action.Enable();
     }
 
-    /// <summary>Back to the start position with full HP.</summary>
+    /// Back to the start position (next to the base) with full HP and skills ready.
     public void ResetForLoop()
     {
         RestoreFull(Config.player.maxHP);
-        transform.position = startPosition;
+        transform.position = Config.map.playerStart;
         attackCooldown = 0f;
+        foreach (ActiveSkill s in skills) s.ResetForLoop();
+        AttackRateMultiplier = 1f;
+    }
+
+    public bool HasSkill(SkillType type)
+    {
+        foreach (ActiveSkill s in skills)
+            if (s.Data.Skill == type) return true;
+        return false;
+    }
+
+    /// Unlocks a skill from its level-up card.
+    public void AddSkill(ActiveSkillUpgrade data)
+    {
+        if (HasSkill(data.Skill)) return;
+
+        ActiveSkill skill;
+        switch (data.Skill)
+        {
+            case SkillType.RapidFire: skill = gameObject.AddComponent<RapidFireSkill>(); break;
+            default: skill = gameObject.AddComponent<BaseInvincibleSkill>(); break;
+        }
+        skill.Init(data);
+        skills.Add(skill);
     }
 
     private void Update()
@@ -47,12 +73,24 @@ public class PlayerCharacter : Unit
     {
         if (dir.sqrMagnitude > 1f) dir.Normalize();
 
+        // Towers and the base are solid; ResolveCollision also keeps the character inside the map.
         Vector2 next = Position + dir * (MoveSpeed * Time.deltaTime);
-        Vector2 map = Config.mapSize;
-        next.x = Mathf.Clamp(next.x, BodyRadius, map.x - BodyRadius);
-        next.y = Mathf.Clamp(next.y, BodyRadius, map.y - BodyRadius);
-        transform.position = next;
+        transform.position = GameManager.Instance.Grid.ResolveCollision(next, BodyRadius);
     }
+
+    public void CollectExp(ExpGem gem)
+    {
+        GameManager.Instance.Levels.AddExp(gem.Value);
+    }
+
+    /// Used by the fallback card. The character is not IHealable: heal towers never heal it.
+    public void Heal(float amount)
+    {
+        if (!IsAlive()) return;
+        hp = Mathf.Min(maxHP, hp + amount);
+    }
+
+    private static float Modifier(UpgradeType t) => GameManager.Instance.Upgrades.GetModifier(t);
 
     public void AutoAttack()
     {

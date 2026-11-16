@@ -1,9 +1,7 @@
 using System;
 
-/// <summary>
 /// Counts one survival loop. GameManager owns it and calls Tick only during the Survival phase,
 /// so the timer stops during level-up and build.
-/// </summary>
 public class LoopTimer
 {
     public float Duration { get; }

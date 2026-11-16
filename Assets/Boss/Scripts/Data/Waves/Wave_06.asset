@@ -12,7 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8474dfb1be8959647aaf994d791a172c, type: 3}
   m_Name: Wave_06
   m_EditorClassIdentifier: 
-  MeleeCount: 54
-  RangedCount: 28
+  MeleeCount: 108
+  RangedCount: 36
+  Sides:
+  - 0
+  - 1
+  - 2
+  - 3
   HasBoss: 0
   BossSpawnTime: 10

@@ -1,11 +1,9 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-/// <summary>
 /// Owns the game phase state machine. Other systems react to it; they never change phase themselves.
-/// Flow: StartLoop (Survival) -> EndLoop (Result) -> EnterBuildPhase (Build) -> StartLoop ...
+/// Flow: StartLoop (Survival) -> [LevelUp ...] -> EndLoop (Result) -> EnterBuildPhase (Build) -> StartLoop ...
 /// The game ends in GameOver after the last loop is cleared or after the maximum number of losses.
-/// </summary>
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
@@ -15,17 +13,28 @@ public class GameManager : MonoBehaviour
     [SerializeField] private DifficultyPreset difficulty;
 
     [Header("Scene references")]
+    [SerializeField] private GridMap grid;
+    [SerializeField] private CameraController cameraController;
     [SerializeField] private BuildManager buildManager;
     [SerializeField] private EnemySpawner enemySpawner;
+    [SerializeField] private LevelSystem levelSystem;
+    [SerializeField] private UpgradeManager upgradeManager;
     [SerializeField] private PlayerCharacter player;
     [SerializeField] private Base baseUnit;
     [SerializeField] private UIManager uiManager;
 
     public GameConfig Config => config;
     public DifficultyPreset Difficulty => difficulty;
+    public LevelSystem Levels => levelSystem;
+    public UpgradeManager Upgrades => upgradeManager;
     public PlayerCharacter Player => player;
     public Base Base => baseUnit;
     public LoopTimer Timer { get; private set; }
+    public GridMap Grid => grid;
+    public FlowField Flow { get; private set; }
+    public CameraController CameraView => cameraController;
+    public BuildManager Builder => buildManager;
+    public EnemySpawner Spawner => enemySpawner;
 
     public int CurrentLoop { get; private set; } = 1;
     public int TotalLoops => enemySpawner.LoopCount;
@@ -34,8 +43,29 @@ public class GameManager : MonoBehaviour
     public int Orbs { get; private set; }
     public GamePhase Phase { get; private set; } = GamePhase.Build;
 
-    /// <summary>Only meaningful in GameOver: true if every loop was cleared.</summary>
+    /// Only meaningful in GameOver: true if every loop was cleared.
     public bool IsVictory { get; private set; }
+
+    /// Base max HP from the difficulty preset plus the base HP passive.
+    public float BaseMaxHP =>
+        Mathf.Round(difficulty.BaseHP * (1f + upgradeManager.GetModifier(UpgradeType.BaseMaxHP)));
+
+    /// Pays for a tower. Returns false (and spends nothing) if there are not enough orbs.
+    public bool TrySpendOrbs(int amount)
+    {
+        if (amount < 0 || Orbs < amount) return false;
+        Orbs -= amount;
+        return true;
+    }
+
+    public void AddOrbs(int amount) => Orbs += amount;
+
+    // A loop end that waits for pending level-ups to be resolved first.
+    private bool hasPendingEnd;
+    private bool pendingEndWon;
+    private string pendingEndReason;
+
+    private float flowRebuildTimer;
 
     private void Awake()
     {
@@ -48,23 +78,31 @@ public class GameManager : MonoBehaviour
 
         Timer = new LoopTimer(config.loopDuration);
         Timer.OnTimeUp += HandleTimeUp;
+
+        grid.Init(config);
+        Flow = new FlowField(grid, config);
+        baseUnit.PlaceOn(grid);
+        cameraController.Init(config, grid);
     }
 
     private void OnEnable()
     {
         player.OnDied += HandlePlayerDied;
         baseUnit.OnDied += HandleBaseDied;
+        levelSystem.OnLevelUp += HandleLevelUp;
+        grid.OnChanged += RebuildFlowField;
     }
 
     private void OnDisable()
     {
         player.OnDied -= HandlePlayerDied;
         baseUnit.OnDied -= HandleBaseDied;
+        levelSystem.OnLevelUp -= HandleLevelUp;
+        grid.OnChanged -= RebuildFlowField;
     }
 
     private void Start()
     {
-        buildManager.UnlockPads(CurrentLoop);
         StartLoop();
     }
 
@@ -73,32 +111,77 @@ public class GameManager : MonoBehaviour
         if (Phase != GamePhase.Survival) return;
 
         Timer.Tick(Time.deltaTime);
-        if (Phase == GamePhase.Survival)          // OnTimeUp may have ended the loop
-            enemySpawner.Tick(Timer.Elapsed);
+        if (Phase != GamePhase.Survival) return;  // OnTimeUp may have ended the loop
+
+        enemySpawner.Tick(Timer.Elapsed);
+
+        flowRebuildTimer -= Time.deltaTime;
+        if (flowRebuildTimer <= 0f) RebuildFlowField();
     }
 
-    /// <summary>Starts (or replays) CurrentLoop: full HP everywhere, new spawn schedule, timer at 0.</summary>
+    private void LateUpdate()
+    {
+        if (Phase == GamePhase.Survival || Phase == GamePhase.LevelUp)
+            cameraController.Follow(player.Position, Time.deltaTime);
+    }
+
+    /// Full flow-field rebuild (about a millisecond). Also runs on GridMap.OnChanged.
+    private void RebuildFlowField()
+    {
+        Flow.Rebuild(grid);
+        flowRebuildTimer = config.flowField.rebuildInterval;
+    }
+
+    // ---------- Loop ----------
+
+    /// Starts (or replays) CurrentLoop: full HP everywhere, new spawn schedule, timer at 0.
     public void StartLoop()
     {
         if (Phase != GamePhase.Build) return;
 
         Timer.Reset();
         player.ResetForLoop();
-        baseUnit.ResetForLoop(difficulty.BaseHP);   // base HP passive is added in step 4
-        // towers revive here in step 6
+        baseUnit.ResetForLoop(BaseMaxHP);
+        buildManager.ExitBuild();
+        buildManager.ResetTowersForLoop();
+        cameraController.SnapTo(player.Position);
+        RebuildFlowField();
         enemySpawner.BuildSchedule(CurrentLoop);
 
         Phase = GamePhase.Survival;
         uiManager.HidePanels();
     }
 
-    /// <summary>Ends the current loop. Ignored unless a loop is running.</summary>
+    /// Ends the current loop. Ignored unless a loop is running.
+    /// If level-ups are pending, they are resolved first and the result is shown afterwards.
     public void EndLoop(bool won, string reason)
     {
+        if (hasPendingEnd) return;
         if (Phase != GamePhase.Survival && Phase != GamePhase.LevelUp) return;
 
-        // pending level-ups are resolved first and orbs are added in step 4
-        int orbsGained = 0;
+        hasPendingEnd = true;
+        pendingEndWon = won;
+        pendingEndReason = reason;
+
+        if (levelSystem.PendingLevelUps > 0)
+        {
+            if (Phase != GamePhase.LevelUp) OpenLevelUp();
+        }
+        else
+        {
+            FinishLoop();
+        }
+    }
+
+    private void FinishLoop()
+    {
+        hasPendingEnd = false;
+        bool won = pendingEndWon;
+        string reason = pendingEndReason;
+
+        int levelOrbs = levelSystem.ConvertToOrbs();
+        int bonusOrbs = Mathf.Max(0, config.bonusOrbsPerLoop);
+        AddOrbs(levelOrbs + bonusOrbs);
 
         if (won)
         {
@@ -122,10 +205,10 @@ public class GameManager : MonoBehaviour
         }
 
         Phase = GamePhase.Result;
-        uiManager.ShowResult(won, reason, orbsGained);
+        uiManager.ShowResult(won, reason, levelOrbs, bonusOrbs);
     }
 
-    /// <summary>Called by the result panel button.</summary>
+    /// Called by the result panel button.
     public void ContinueAfterResult()
     {
         if (Phase == GamePhase.Result) EnterBuildPhase();
@@ -136,9 +219,11 @@ public class GameManager : MonoBehaviour
     {
         enemySpawner.ClearAll();
         Projectile.ClearAll();
-        buildManager.UnlockPads(CurrentLoop);
+        ExpGem.ClearAll();
+        cameraController.FitWholeMap();
 
         Phase = GamePhase.Build;
+        buildManager.EnterBuild();
         uiManager.ShowBuild();
     }
 
@@ -152,6 +237,36 @@ public class GameManager : MonoBehaviour
     {
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
+
+    // ---------- Level-up ----------
+
+    private void HandleLevelUp()
+    {
+        if (Phase == GamePhase.Survival) OpenLevelUp();
+        // Already in LevelUp: the extra level waits in PendingLevelUps.
+    }
+
+    private void OpenLevelUp()
+    {
+        Phase = GamePhase.LevelUp;
+        uiManager.ShowLevelUp(upgradeManager.RollChoices(config.upgradeChoices));
+    }
+
+    /// Called by the level-up panel when a card is picked.
+    public void ChooseUpgrade(Upgrade upgrade)
+    {
+        if (Phase != GamePhase.LevelUp) return;
+
+        upgradeManager.Apply(upgrade);
+        levelSystem.ResolveLevelUp();
+        uiManager.HideLevelUp();
+
+        if (levelSystem.PendingLevelUps > 0) OpenLevelUp();
+        else if (hasPendingEnd) FinishLoop();
+        else Phase = GamePhase.Survival;
+    }
+
+    // ---------- Event handlers ----------
 
     private void HandleTimeUp() => EndLoop(true, $"Survived {Timer.Duration:0} seconds");
     private void HandleBaseDied(Unit _) => EndLoop(false, "The base was destroyed");

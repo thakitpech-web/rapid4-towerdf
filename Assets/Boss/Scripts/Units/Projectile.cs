@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>A homing shot that hits one enemy. Used by the character and the base.</summary>
+/// A homing shot that hits one enemy. Used by the character and the base.
 public class Projectile : MonoBehaviour
 {
     private static readonly List<Projectile> active = new List<Projectile>();
@@ -20,7 +20,7 @@ public class Projectile : MonoBehaviour
     private void OnEnable() => active.Add(this);
     private void OnDisable() => active.Remove(this);
 
-    /// <summary>Removes every shot from the map (loop reset).</summary>
+    /// Removes every shot from the map (loop reset).
     public static void ClearAll()
     {
         foreach (Projectile p in new List<Projectile>(active))

@@ -1,7 +1,7 @@
 using TMPro;
 using UnityEngine;
 
-/// <summary>Loop result and game over screen. Wire the button's OnClick to OnButtonClicked in the Inspector.</summary>
+/// Loop result and game over screen. Wire the button's OnClick to OnButtonClicked in the Inspector.
 public class ResultPanel : MonoBehaviour
 {
     [SerializeField] private TMP_Text titleText;

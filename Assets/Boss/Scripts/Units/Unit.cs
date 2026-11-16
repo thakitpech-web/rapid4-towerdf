@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-/// <summary>Anything with HP: player, base, monsters, towers.</summary>
+/// Anything with HP: player, base, monsters, towers.
 public abstract class Unit : MonoBehaviour
 {
     // Serialized only so they can be watched in the Inspector while playing.
@@ -39,7 +39,7 @@ public abstract class Unit : MonoBehaviour
         OnDied?.Invoke(this);
     }
 
-    /// <summary>Full HP, no shield.</summary>
+    /// Full HP, no shield.
     protected void RestoreFull(float newMaxHP)
     {
         maxHP = newMaxHP;

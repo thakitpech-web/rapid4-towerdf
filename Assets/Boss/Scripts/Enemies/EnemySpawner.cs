@@ -1,35 +1,34 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// Builds the spawn schedule for a loop from WaveData and creates monsters at the start of the path
-/// with stats scaled for the current loop and difficulty. GameManager calls BuildSchedule and Tick.
-/// </summary>
+/// Builds the spawn schedule for a loop from WaveData and creates monsters on a random cell along a
+/// random open side (WaveData.Sides), with stats scaled for the current loop and difficulty.
+/// GameManager calls BuildSchedule and Tick.
 public class EnemySpawner : MonoBehaviour
 {
     public struct SpawnEvent
     {
         public float Time;
         public EnemyType Type;
+        public SpawnSide Side;
     }
 
     [Tooltip("One WaveData per loop, loop 1 first")]
     [SerializeField] private WaveData[] waves;
-    [SerializeField] private Path path;
     [SerializeField] private MeleeEnemy meleePrefab;
     [SerializeField] private RangedEnemy rangedPrefab;
 
     public WaveData[] Waves => waves;
     public Queue<SpawnEvent> Schedule { get; } = new Queue<SpawnEvent>();
-    public Path Path => path;
 
-    /// <summary>Number of loops in the game (one per WaveData).</summary>
+    /// Number of loops in the game (one per WaveData).
     public int LoopCount => waves.Length;
 
-    /// <summary>
-    /// Spreads melee and ranged monsters over the spawn window, getting denser over time,
-    /// with ranged monsters mixed in evenly (same as the prototype).
-    /// </summary>
+    /// Open spawn sides for a loop (1-based).
+    public SpawnSide[] SidesFor(int loop) => waves[Mathf.Clamp(loop, 1, waves.Length) - 1].Sides;
+
+    /// Spawn i of n happens at spawnWindow × (i/n)^spawnCurve + spawnStartDelay seconds, with ranged
+    /// monsters mixed in evenly and a random open side for each.
     public void BuildSchedule(int loop)
     {
         Schedule.Clear();
@@ -43,19 +42,27 @@ public class EnemySpawner : MonoBehaviour
         {
             bool isRanged = (i + 1) * ranged / total > i * ranged / total;
             float t = config.spawnWindow * Mathf.Pow((float)i / total, config.spawnCurve) + config.spawnStartDelay;
-            Schedule.Enqueue(new SpawnEvent { Time = t, Type = isRanged ? EnemyType.Ranged : EnemyType.Melee });
+            Schedule.Enqueue(new SpawnEvent
+            {
+                Time = t,
+                Type = isRanged ? EnemyType.Ranged : EnemyType.Melee,
+                Side = wave.Sides[Random.Range(0, wave.Sides.Length)]
+            });
         }
-        // Boss (wave.HasBoss) is added in build step 9.
+        // Boss (wave.HasBoss) is added in build step 11.
     }
 
-    /// <summary>Spawns everything scheduled up to <paramref name="elapsed"/> seconds into the loop.</summary>
+    /// Spawns everything scheduled up to <paramref name="elapsed"/> seconds into the loop.
     public void Tick(float elapsed)
     {
         while (Schedule.Count > 0 && Schedule.Peek().Time <= elapsed)
-            Spawn(Schedule.Dequeue().Type);
+        {
+            SpawnEvent e = Schedule.Dequeue();
+            Spawn(e.Type, e.Side);
+        }
     }
 
-    public Enemy Spawn(EnemyType type)
+    public Enemy Spawn(EnemyType type, SpawnSide side)
     {
         GameManager gm = GameManager.Instance;
         GameConfig config = gm.Config;
@@ -63,15 +70,15 @@ public class EnemySpawner : MonoBehaviour
         switch (type)
         {
             case EnemyType.Melee:
-                return SpawnFrom(meleePrefab, config.melee, gm.CurrentLoop, gm.Difficulty, config.pathSpread);
+                return SpawnFrom(meleePrefab, config.melee, side, gm.CurrentLoop, gm.Difficulty);
             case EnemyType.Ranged:
-                return SpawnFrom(rangedPrefab, config.ranged, gm.CurrentLoop, gm.Difficulty, config.pathSpread);
+                return SpawnFrom(rangedPrefab, config.ranged, side, gm.CurrentLoop, gm.Difficulty);
             default:
                 throw new System.NotSupportedException($"{type} enemies are added in a later build step.");
         }
     }
 
-    /// <summary>Removes every monster from the map (loop reset).</summary>
+    /// Removes every monster from the map (loop reset).
     public void ClearAll()
     {
         Schedule.Clear();
@@ -79,18 +86,36 @@ public class EnemySpawner : MonoBehaviour
             Destroy(e.gameObject);
     }
 
-    private Enemy SpawnFrom(Enemy prefab, GameConfig.MonsterStats stats, int loop, DifficultyPreset difficulty,
-                            float spread)
+    private Enemy SpawnFrom(Enemy prefab, GameConfig.MonsterStats stats, SpawnSide side, int loop,
+                            DifficultyPreset difficulty)
     {
-        Enemy enemy = Instantiate(prefab, path.PositionAt(0f), Quaternion.identity, transform);
+        GameConfig config = GameManager.Instance.Config;
+        float j = config.monsterCellJitter;
+        Vector2 offset = new Vector2(Random.Range(-j, j), Random.Range(-j, j));
+        Vector2 pos = GameManager.Instance.Grid.CellCenter(RandomCellOn(side)) + offset;
+
+        Enemy enemy = Instantiate(prefab, pos, Quaternion.identity, transform);
         enemy.Init(
-            path,
             DifficultyScaling.EnemyHP(stats.hp, loop, difficulty),
             DifficultyScaling.EnemyDamage(stats.damage, loop, difficulty),
             stats.speed,
             stats.exp,
             stats.bodyRadius,
-            Random.Range(-spread * 0.5f, spread * 0.5f));
+            offset);
         return enemy;
+    }
+
+    /// A random cell in the outermost row or column of the given side (corners excluded).
+    private static Vector2Int RandomCellOn(SpawnSide side)
+    {
+        GridMap grid = GameManager.Instance.Grid;
+        int w = grid.Width, h = grid.Height;
+        switch (side)
+        {
+            case SpawnSide.Left: return new Vector2Int(0, Random.Range(1, h - 1));
+            case SpawnSide.Right: return new Vector2Int(w - 1, Random.Range(1, h - 1));
+            case SpawnSide.Top: return new Vector2Int(Random.Range(1, w - 1), h - 1);
+            default: return new Vector2Int(Random.Range(1, w - 1), 0);
+        }
     }
 }
