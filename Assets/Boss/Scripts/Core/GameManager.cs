@@ -113,7 +113,7 @@ public class GameManager : MonoBehaviour
     private void LateUpdate()
     {
         if (Phase == GamePhase.Survival || Phase == GamePhase.LevelUp)
-            cameraController.Follow(player.Position, Time.deltaTime);
+            cameraController.FitWholeMap();   // fixed view; also follows window resizes
     }
 
     // ---------- Loop ----------
@@ -128,7 +128,7 @@ public class GameManager : MonoBehaviour
         baseUnit.ResetForLoop(BaseMaxHP);
         buildManager.ExitBuild();
         buildManager.ResetTowersForLoop();
-        cameraController.SnapTo(player.Position);
+        cameraController.FitWholeMap();
         grid.RefreshVisuals(CurrentLoop);
         enemySpawner.BuildSchedule(CurrentLoop);
 

@@ -10,7 +10,7 @@ public class GridMap : MonoBehaviour
 {
     [Header("Layout")]
     [Tooltip("Parent of the LanePath objects drawn in the scene. A lane side without a LanePath falls back to " +
-             "the layout in GameConfig.map (the design doc).")]
+             "the default lanes in GameConfig.map.")]
     [SerializeField] private Transform layoutRoot;
 
     [Header("Lane overlay")]
@@ -45,8 +45,8 @@ public class GridMap : MonoBehaviour
         GameConfig.MapSettings m = config.map;
         Width = m.width;
         Height = m.height;
-        BaseCells = new RectInt(m.baseCell.x, Height - m.baseCell.y - m.baseSize, m.baseSize, m.baseSize);
-        PlayerStart = new Vector2(m.playerStart.x, Height - m.playerStart.y);
+        BaseCells = new RectInt(m.baseCell.x, m.baseCell.y, m.baseSize, m.baseSize);
+        PlayerStart = m.playerStart;
         towerAt = new Tower[Width * Height];
 
         BuildLanes(m);
@@ -55,28 +55,18 @@ public class GridMap : MonoBehaviour
 
     // ---------- Layout ----------
 
-    /// The doc lanes in Unity cells, indexed by SpawnSide. The doc's y grows downward, so y is flipped; the
-    /// left lane is rotated 90 degrees around the map centre, (x, y) -> (W-1-y, x), for top, right and bottom.
+    /// The default lanes from GameConfig.map, indexed by SpawnSide.
     public static Vector2Int[][] DefaultLaneTurns(GameConfig.MapSettings m)
     {
         var laneTurns = new Vector2Int[4][];
-        int w = m.width, h = m.height;
-        Vector2Int Flip(Vector2Int d) => new Vector2Int(d.x, h - 1 - d.y);
-        Vector2Int Rotate(Vector2Int d) => new Vector2Int(w - 1 - d.y, d.x);
-
-        SpawnSide[] order = { SpawnSide.Left, SpawnSide.Top, SpawnSide.Right, SpawnSide.Bottom };
-        Vector2Int[] turns = (Vector2Int[])m.leftLaneTurns.Clone();
-        foreach (SpawnSide side in order)
-        {
-            var t = new Vector2Int[turns.Length];
-            for (int i = 0; i < turns.Length; i++) t[i] = Flip(turns[i]);
-            laneTurns[(int)side] = t;
-            for (int i = 0; i < turns.Length; i++) turns[i] = Rotate(turns[i]);
-        }
+        laneTurns[(int)SpawnSide.Left] = m.leftLane;
+        laneTurns[(int)SpawnSide.Right] = m.rightLane;
+        laneTurns[(int)SpawnSide.Top] = m.topLane;
+        laneTurns[(int)SpawnSide.Bottom] = m.bottomLane;
         return laneTurns;
     }
 
-    /// Lanes from the scene (LanePath under Layout Root) where present, else the doc layout (1 tile wide).
+    /// Lanes from the scene (LanePath under Layout Root) where present, else the default lanes (1 tile wide).
     private void BuildLanes(GameConfig.MapSettings m)
     {
         Vector2Int[][] laneTurns = DefaultLaneTurns(m);
@@ -109,7 +99,7 @@ public class GridMap : MonoBehaviour
     }
 
 #if UNITY_EDITOR
-    /// Inspector menu (⋮ on the Grid Map component): creates LanePath objects for the doc layout under
+    /// Inspector menu (⋮ on the Grid Map component): creates LanePath objects for the default lanes under
     /// Layout Root, to edit by dragging. Replaces any layout objects already there.
     [ContextMenu("Create Layout From GameConfig")]
     private void CreateLayoutFromConfig()
@@ -158,11 +148,11 @@ public class GridMap : MonoBehaviour
 
         Gizmos.color = new Color(1f, 1f, 1f, 0.5f);
         Gizmos.DrawWireCube(new Vector3(m.width * 0.5f, m.height * 0.5f, 0f), new Vector3(m.width, m.height, 0f));
-        var baseRect = new Rect(m.baseCell.x, m.height - m.baseCell.y - m.baseSize, m.baseSize, m.baseSize);
+        var baseRect = new Rect(m.baseCell.x, m.baseCell.y, m.baseSize, m.baseSize);
         Gizmos.color = new Color(0.4f, 0.8f, 1f, 0.8f);
         Gizmos.DrawWireCube(baseRect.center, new Vector3(m.baseSize, m.baseSize, 0f));
         Gizmos.color = Color.yellow;
-        Gizmos.DrawWireSphere(new Vector3(m.playerStart.x, m.height - m.playerStart.y, 0f), 0.3f);
+        Gizmos.DrawWireSphere(new Vector3(m.playerStart.x, m.playerStart.y, 0f), 0.3f);
     }
 #endif
 

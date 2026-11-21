@@ -60,35 +60,50 @@ public class GameConfig : ScriptableObject
     [Tooltip("Seconds before the first spawn")]
     public float spawnStartDelay = 0.4f;
 
-    /// Map layout (GAME_DESIGN.md section 3). Cells and positions are written as in the doc, where y grows
-    /// downward (cell (0,0) is the top-left corner); GridMap flips y into Unity world space (y up).
+    /// Map layout in Unity cells (x right, y up; cell (0,0) is the bottom-left corner).
+    /// Lanes drawn in the scene (LanePath) replace the default lanes below.
     [Serializable]
     public class MapSettings
     {
-        public int width = 36;
-        public int height = 36;
-        [Tooltip("Doc coordinates: top-left cell of the base")] public Vector2Int baseCell = new Vector2Int(17, 17);
+        public int width = 34;
+        public int height = 20;
+        [Tooltip("Bottom-left cell of the base")] public Vector2Int baseCell = new Vector2Int(16, 9);
         [Tooltip("The base is baseSize x baseSize cells")] public int baseSize = 2;
-        [Tooltip("Doc coordinates: character start position (tiles)")] public Vector2 playerStart = new Vector2(18f, 19.6f);
+        [Tooltip("Character start position (tiles)")] public Vector2 playerStart = new Vector2(18.5f, 8.3f);
 
-        [Tooltip("Doc coordinates: left lane turn points, edge to base. The other lanes are this rotated " +
-                 "90 degrees around the map centre, (x, y) -> (W-1-y, x), in the order top, right, bottom.")]
-        public Vector2Int[] leftLaneTurns =
+        [Header("Default lanes: turn points from the map edge to the cell next to the base")]
+        public Vector2Int[] leftLane =
         {
-            new Vector2Int(0, 17), new Vector2Int(5, 17), new Vector2Int(5, 9),
-            new Vector2Int(11, 9), new Vector2Int(11, 17), new Vector2Int(16, 17)
+            new Vector2Int(0, 10), new Vector2Int(5, 10), new Vector2Int(5, 15),
+            new Vector2Int(10, 15), new Vector2Int(10, 10), new Vector2Int(15, 10)
+        };
+        public Vector2Int[] rightLane =
+        {
+            new Vector2Int(33, 9), new Vector2Int(28, 9), new Vector2Int(28, 4),
+            new Vector2Int(23, 4), new Vector2Int(23, 9), new Vector2Int(18, 9)
+        };
+        public Vector2Int[] topLane =
+        {
+            new Vector2Int(16, 19), new Vector2Int(16, 17), new Vector2Int(12, 17),
+            new Vector2Int(12, 13), new Vector2Int(16, 13), new Vector2Int(16, 11)
+        };
+        public Vector2Int[] bottomLane =
+        {
+            new Vector2Int(17, 0), new Vector2Int(17, 2), new Vector2Int(21, 2),
+            new Vector2Int(21, 6), new Vector2Int(17, 6), new Vector2Int(17, 8)
         };
     }
 
     [Serializable]
     public class CameraSettings
     {
-        [Tooltip("Tiles visible during survival (at least this wide and this tall)")]
-        public Vector2 viewSize = new Vector2(24f, 13f);
-        [Tooltip("Follow lerp factor per second")]
-        public float followSharpness = 8f;
-        [Tooltip("Not in the doc: empty tiles shown around the map when the build phase fits the whole map")]
-        public float fitPadding = 0.5f;
+        [Tooltip("Build phase: the closest zoom shows at least this many tiles (width, height)")]
+        public Vector2 buildMinView = new Vector2(16f, 9f);
+        [Tooltip("Empty tiles shown around the map when the camera fits the whole map")]
+        public float fitPadding = 0f;
+        [Tooltip("Off: the whole map is always visible (thin empty bars where the screen shape differs). " +
+                 "On: the map fills the screen and the edges that do not fit are cut off.")]
+        public bool fillScreen;
     }
 
     [Serializable]

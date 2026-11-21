@@ -1,6 +1,6 @@
 using UnityEngine;
 
-/// Survival: follows the character smoothly and shows at least ViewSize tiles, clamped to the map.
+/// Survival: a fixed view that fits the whole map (no following).
 /// Build: starts fitted to the whole map; BuildManager zooms (ZoomAt) and pans (Pan) from player input.
 /// GameManager decides when each mode applies.
 [RequireComponent(typeof(Camera))]
@@ -10,9 +10,6 @@ public class CameraController : MonoBehaviour
     private GameConfig.CameraSettings settings;
     private GridMap grid;
 
-    public Vector2 ViewSize => settings.viewSize;
-    public float FollowSharpness => settings.followSharpness;
-
     public void Init(GameConfig config, GridMap grid)
     {
         cam = GetComponent<Camera>();
@@ -20,38 +17,23 @@ public class CameraController : MonoBehaviour
         this.grid = grid;
     }
 
-    /// Jumps straight to the target at the survival zoom (loop start).
-    public void SnapTo(Vector2 target)
-    {
-        cam.orthographicSize = SurvivalSize();
-        SetPosition(Clamp(target));
-    }
-
-    /// Moves toward the target at FollowSharpness per second, clamped to the map.
-    public void Follow(Vector2 target, float dt)
-    {
-        cam.orthographicSize = SurvivalSize();   // also handles window resizes
-        Vector2 pos = transform.position;
-        pos = Vector2.Lerp(pos, Clamp(target), Mathf.Min(1f, FollowSharpness * dt));
-        SetPosition(Clamp(pos));
-    }
-
-    /// Zooms out so the whole map is visible (build phase).
+    /// Shows the whole map, centred (survival every frame, and the start of the build phase).
     public void FitWholeMap()
     {
         cam.orthographicSize = MaxZoomOutSize();
         SetPosition(new Vector2(grid.Width * 0.5f, grid.Height * 0.5f));
     }
 
-    /// Closest build-phase zoom: the survival view.
-    public float MinZoom => SurvivalSize();
+    /// Closest build-phase zoom: shows at least BuildMinView tiles.
+    public float MinZoom => Mathf.Max(settings.buildMinView.y * 0.5f, settings.buildMinView.x * 0.5f / cam.aspect);
 
     /// Build phase: multiplies the view size by <paramref name="factor"/> (&gt;1 zooms out), keeping the world
     /// point under <paramref name="screenPos"/> in place. Clamped between MinZoom and the whole map.
     public void ZoomAt(float factor, Vector2 screenPos)
     {
         Vector2 before = ScreenToWorld(screenPos);
-        cam.orthographicSize = Mathf.Clamp(cam.orthographicSize * factor, MinZoom, MaxZoomOutSize());
+        cam.orthographicSize = Mathf.Clamp(cam.orthographicSize * factor, Mathf.Min(MinZoom, MaxZoomOutSize()),
+                                           MaxZoomOutSize());
         Vector2 after = ScreenToWorld(screenPos);
         SetPosition(ClampBuild((Vector2)transform.position + before - after));
     }
@@ -69,10 +51,12 @@ public class CameraController : MonoBehaviour
         float pad = settings.fitPadding;
         float w = grid.Width + 2f * pad;
         float h = grid.Height + 2f * pad;
-        return Mathf.Max(h * 0.5f, w * 0.5f / cam.aspect);
+        return settings.fillScreen
+            ? Mathf.Min(h * 0.5f, w * 0.5f / cam.aspect)    // fill: crop what does not fit
+            : Mathf.Max(h * 0.5f, w * 0.5f / cam.aspect);   // fit: show everything
     }
 
-    /// Like Clamp, but allows the fit padding around the map.
+    /// Keeps the view over the map plus the fit padding (centres it on an axis where the view is larger).
     private Vector2 ClampBuild(Vector2 pos)
     {
         float pad = settings.fitPadding;
@@ -81,19 +65,6 @@ public class CameraController : MonoBehaviour
         float w = grid.Width + 2f * pad, h = grid.Height + 2f * pad;
         pos.x = w > 2f * halfW ? Mathf.Clamp(pos.x, halfW - pad, grid.Width + pad - halfW) : grid.Width * 0.5f;
         pos.y = h > 2f * halfH ? Mathf.Clamp(pos.y, halfH - pad, grid.Height + pad - halfH) : grid.Height * 0.5f;
-        return pos;
-    }
-
-    /// Orthographic size that shows at least ViewSize tiles in both directions.
-    private float SurvivalSize() => Mathf.Max(ViewSize.y * 0.5f, ViewSize.x * 0.5f / cam.aspect);
-
-    /// Keeps the view inside the map (centres it on an axis where the map is smaller than the view).
-    private Vector2 Clamp(Vector2 pos)
-    {
-        float halfH = cam.orthographicSize;
-        float halfW = halfH * cam.aspect;
-        pos.x = grid.Width > 2f * halfW ? Mathf.Clamp(pos.x, halfW, grid.Width - halfW) : grid.Width * 0.5f;
-        pos.y = grid.Height > 2f * halfH ? Mathf.Clamp(pos.y, halfH, grid.Height - halfH) : grid.Height * 0.5f;
         return pos;
     }
 

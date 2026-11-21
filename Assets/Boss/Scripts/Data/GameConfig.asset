@@ -19,22 +19,43 @@ MonoBehaviour:
   spawnCurve: 0.7
   spawnStartDelay: 0.4
   map:
-    width: 36
-    height: 36
-    baseCell: {x: 17, y: 17}
+    width: 34
+    height: 20
+    baseCell: {x: 16, y: 9}
     baseSize: 2
-    playerStart: {x: 16, y: 18}
-    leftLaneTurns:
-    - {x: 0, y: 17}
-    - {x: 5, y: 17}
-    - {x: 5, y: 9}
-    - {x: 11, y: 9}
-    - {x: 11, y: 17}
+    playerStart: {x: 18.5, y: 8.3}
+    leftLane:
+    - {x: 0, y: 10}
+    - {x: 5, y: 10}
+    - {x: 5, y: 15}
+    - {x: 10, y: 15}
+    - {x: 10, y: 10}
+    - {x: 15, y: 10}
+    rightLane:
+    - {x: 33, y: 9}
+    - {x: 28, y: 9}
+    - {x: 28, y: 4}
+    - {x: 23, y: 4}
+    - {x: 23, y: 9}
+    - {x: 18, y: 9}
+    topLane:
+    - {x: 16, y: 19}
     - {x: 16, y: 17}
+    - {x: 12, y: 17}
+    - {x: 12, y: 13}
+    - {x: 16, y: 13}
+    - {x: 16, y: 11}
+    bottomLane:
+    - {x: 17, y: 0}
+    - {x: 17, y: 2}
+    - {x: 21, y: 2}
+    - {x: 21, y: 6}
+    - {x: 17, y: 6}
+    - {x: 17, y: 8}
   cameraView:
-    viewSize: {x: 24, y: 13}
-    followSharpness: 8
-    fitPadding: 0.5
+    buildMinView: {x: 16, y: 9}
+    fitPadding: 0
+    fillScreen: 0
   towerTypes:
   - {fileID: 11400000, guid: b09c3d2cc0584276801384c01171113c, type: 2}
   - {fileID: 11400000, guid: c48720f98ec34ef3bde2c1ecdd55c0cb, type: 2}
