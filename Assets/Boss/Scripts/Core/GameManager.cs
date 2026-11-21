@@ -31,7 +31,6 @@ public class GameManager : MonoBehaviour
     public Base Base => baseUnit;
     public LoopTimer Timer { get; private set; }
     public GridMap Grid => grid;
-    public FlowField Flow { get; private set; }
     public CameraController CameraView => cameraController;
     public BuildManager Builder => buildManager;
     public EnemySpawner Spawner => enemySpawner;
@@ -65,8 +64,6 @@ public class GameManager : MonoBehaviour
     private bool pendingEndWon;
     private string pendingEndReason;
 
-    private float flowRebuildTimer;
-
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -80,7 +77,6 @@ public class GameManager : MonoBehaviour
         Timer.OnTimeUp += HandleTimeUp;
 
         grid.Init(config);
-        Flow = new FlowField(grid, config);
         baseUnit.PlaceOn(grid);
         cameraController.Init(config, grid);
     }
@@ -90,7 +86,6 @@ public class GameManager : MonoBehaviour
         player.OnDied += HandlePlayerDied;
         baseUnit.OnDied += HandleBaseDied;
         levelSystem.OnLevelUp += HandleLevelUp;
-        grid.OnChanged += RebuildFlowField;
     }
 
     private void OnDisable()
@@ -98,7 +93,6 @@ public class GameManager : MonoBehaviour
         player.OnDied -= HandlePlayerDied;
         baseUnit.OnDied -= HandleBaseDied;
         levelSystem.OnLevelUp -= HandleLevelUp;
-        grid.OnChanged -= RebuildFlowField;
     }
 
     private void Start()
@@ -114,22 +108,12 @@ public class GameManager : MonoBehaviour
         if (Phase != GamePhase.Survival) return;  // OnTimeUp may have ended the loop
 
         enemySpawner.Tick(Timer.Elapsed);
-
-        flowRebuildTimer -= Time.deltaTime;
-        if (flowRebuildTimer <= 0f) RebuildFlowField();
     }
 
     private void LateUpdate()
     {
         if (Phase == GamePhase.Survival || Phase == GamePhase.LevelUp)
             cameraController.Follow(player.Position, Time.deltaTime);
-    }
-
-    /// Full flow-field rebuild (about a millisecond). Also runs on GridMap.OnChanged.
-    private void RebuildFlowField()
-    {
-        Flow.Rebuild(grid);
-        flowRebuildTimer = config.flowField.rebuildInterval;
     }
 
     // ---------- Loop ----------
@@ -145,7 +129,7 @@ public class GameManager : MonoBehaviour
         buildManager.ExitBuild();
         buildManager.ResetTowersForLoop();
         cameraController.SnapTo(player.Position);
-        RebuildFlowField();
+        grid.RefreshVisuals(CurrentLoop);
         enemySpawner.BuildSchedule(CurrentLoop);
 
         Phase = GamePhase.Survival;
@@ -221,6 +205,7 @@ public class GameManager : MonoBehaviour
         Projectile.ClearAll();
         ExpGem.ClearAll();
         cameraController.FitWholeMap();
+        grid.RefreshVisuals(CurrentLoop);       // lanes and pads for the loop about to be played
 
         Phase = GamePhase.Build;
         buildManager.EnterBuild();

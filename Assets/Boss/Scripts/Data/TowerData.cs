@@ -25,7 +25,9 @@ public class TowerData : ScriptableObject
 {
     public TowerType Type;
     public string DisplayName = "Bolt";
-    [Tooltip("Placeholder colour")] public Color Color = Color.white;
+    [Tooltip("Prefab with the BoltTower / HealTower / AoETower component that matches Type, plus its art")]
+    public Tower Prefab;
+    [Tooltip("Colour of this tower on the minimap")] public Color Color = Color.white;
 
     [Tooltip("Orbs for tier 1")] public int BaseCost = 1;
 

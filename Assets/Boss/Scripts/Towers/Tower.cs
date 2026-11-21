@@ -1,14 +1,26 @@
 using UnityEngine;
 
-/// A tower on one grid cell. Towers are walls: monsters path around them or break through
-/// (flow-field cost 1 + HP / divisor). A destroyed tower stops working and stops blocking until
-/// the loop ends, then revives at full HP. BuildManager creates, moves, merges and sells towers.
+/// A tower on one grid cell (never a lane or the base). It blocks the character and swarm monsters;
+/// convoy monsters never meet it because towers are off the lanes. A destroyed tower stops working and stops blocking
+/// until the loop ends, then revives at full HP. BuildManager creates, moves, merges and sells towers.
+/// Visuals come from the prefab (TowerData.Prefab): every part below is optional.
 public abstract class Tower : Unit, IHealable
 {
-    private static readonly Color BreachColor = new Color(1f, 0.2f, 0.2f, 1f);
-    private static readonly Color SelectColor = new Color(1f, 0.95f, 0.3f, 1f);
-    private const float BodyScale = 0.8f;
-    private const float DeadAlpha = 0.3f;
+    [Header("Visuals (all optional)")]
+    [Tooltip("Main sprite of the tower")]
+    [SerializeField] private SpriteRenderer body;
+    [Tooltip("Body sprite per tier (element 0 = T1). Empty entries keep the sprite set on Body.")]
+    [SerializeField] private Sprite[] tierSprites = new Sprite[3];
+    [Tooltip("Marks shown up to the tier (e.g. 3 stars: T2 shows the first two)")]
+    [SerializeField] private GameObject[] tierMarks;
+    [Tooltip("Shown while the tower is selected in the build phase")]
+    [SerializeField] private GameObject selectedMark;
+    [Tooltip("HP bar root, shown only while damaged")]
+    [SerializeField] private GameObject hpBar;
+    [Tooltip("Fill sprite inside the HP bar; shrinks on X, keeping its left edge in place")]
+    [SerializeField] private SpriteRenderer hpFill;
+    [Tooltip("Multiplied into the body colour while destroyed")]
+    [SerializeField] private Color deadTint = new Color(0.5f, 0.5f, 0.5f, 0.4f);
 
     public TowerData Data { get; private set; }
     public int Tier { get; private set; }
@@ -19,46 +31,39 @@ public abstract class Tower : Unit, IHealable
 
     public TowerStats Stats => Data.GetStats(Tier);
 
-    private static readonly Color HpBackColor = new Color(0f, 0f, 0f, 0.6f);
-    private static readonly Color HpFillColor = new Color(0.4f, 1f, 0.4f, 1f);
-    private const float HpBarWidth = 0.8f, HpBarHeight = 0.1f, HpBarY = 0.55f;
+    private bool selected;
+    private Color bodyColor = Color.white;
+    private Vector3 fillScale, fillPos;
+    private float fillWidth, fillPivot;
 
-    private SpriteRenderer body;
-    private SpriteRenderer outline;
-    private SpriteRenderer hpBack, hpFill;
-    private Transform pips;
-    private bool breach, selected;
-
-    /// Called by BuildManager right after the component is added.
+    /// Called by BuildManager right after the prefab is instantiated.
     public void Init(TowerData data, int tier, Vector2Int cell)
     {
         Data = data;
         Cell = cell;
-        body = PlaceholderArt.AddChild(transform, "Body", PlaceholderArt.Square, data.Color, BodyScale,
-                                       PlaceholderArt.TowerOrder);
-        outline = PlaceholderArt.AddChild(transform, "Outline", PlaceholderArt.SquareOutline, Color.white, 1f,
-                                          PlaceholderArt.TowerDetailOrder);
-        hpBack = PlaceholderArt.AddChild(transform, "HpBack", PlaceholderArt.Square, HpBackColor, 1f,
-                                         PlaceholderArt.TowerDetailOrder);
-        hpFill = PlaceholderArt.AddChild(transform, "HpFill", PlaceholderArt.Square, HpFillColor, 1f,
-                                         PlaceholderArt.TowerDetailOrder + 1);
-        hpBack.transform.localPosition = new Vector3(0f, HpBarY, 0f);
-        hpBack.transform.localScale = new Vector3(HpBarWidth, HpBarHeight, 1f);
+
+        if (body != null) bodyColor = body.color;
+        if (hpFill != null)
+        {
+            fillScale = hpFill.transform.localScale;
+            fillPos = hpFill.transform.localPosition;
+            Sprite s = hpFill.sprite;
+            fillWidth = s != null ? s.bounds.size.x * fillScale.x : fillScale.x;
+            fillPivot = s != null && s.rect.width > 0f ? s.pivot.x / s.rect.width : 0.5f;
+        }
         SetTier(tier);
     }
 
-    /// HP bar above the tower, shown only while damaged.
+    /// HP bar shown only while damaged.
     private void LateUpdate()
     {
-        if (hpBack == null) return;
-
         bool show = IsAlive() && HP < MaxHP;
-        hpBack.enabled = hpFill.enabled = show;
-        if (!show) return;
+        if (hpBar != null && hpBar.activeSelf != show) hpBar.SetActive(show);
+        if (!show || hpFill == null) return;
 
         float frac = HP / MaxHP;
-        hpFill.transform.localScale = new Vector3(HpBarWidth * frac, HpBarHeight, 1f);
-        hpFill.transform.localPosition = new Vector3(-HpBarWidth * (1f - frac) * 0.5f, HpBarY, 0f);
+        hpFill.transform.localScale = new Vector3(fillScale.x * frac, fillScale.y, fillScale.z);
+        hpFill.transform.localPosition = fillPos - new Vector3(fillPivot * fillWidth * (1f - frac), 0f, 0f);
     }
 
     /// Changes tier (merge) and restores full HP for the new tier.
@@ -67,7 +72,13 @@ public abstract class Tower : Unit, IHealable
         Tier = Mathf.Clamp(tier, 1, Data.MaxTier);
         RestoreFull(Stats.MaxHP);
         DisabledTime = 0f;
-        BuildPips();
+
+        if (body != null && tierSprites != null && Tier - 1 < tierSprites.Length && tierSprites[Tier - 1] != null)
+            body.sprite = tierSprites[Tier - 1];
+        if (tierMarks != null)
+            for (int i = 0; i < tierMarks.Length; i++)
+                if (tierMarks[i] != null) tierMarks[i].SetActive(i < Tier);
+
         RefreshVisuals();
     }
 
@@ -86,9 +97,6 @@ public abstract class Tower : Unit, IHealable
 
     /// Half the total cost, rounded down.
     public int SellValue() => TotalCost() / 2;
-
-    /// Flow-field cost of entering this tower's cell.
-    public float PathCost() => 1f + HP / Config.flowField.towerHpDivisor;
 
     /// Bolt and AoE damage including the tower damage passive (not healing).
     protected float ModifiedDamage =>
@@ -113,7 +121,7 @@ public abstract class Tower : Unit, IHealable
     {
         base.Die();
         RefreshVisuals();
-        GameManager.Instance.Grid.NotifyChanged();   // stops blocking: monsters re-route through here
+        GameManager.Instance.Grid.NotifyChanged();   // stops blocking the character and swarm
     }
 
     // ---------- IHealable ----------
@@ -132,14 +140,7 @@ public abstract class Tower : Unit, IHealable
 
     // ---------- Build-phase marks ----------
 
-    /// Red outline: the previewed monster route breaks through this tower.
-    public void SetBreachMark(bool on)
-    {
-        breach = on;
-        RefreshVisuals();
-    }
-
-    /// Yellow outline: selected in the build phase.
+    /// Selected in the build phase (shows selectedMark).
     public void SetSelected(bool on)
     {
         selected = on;
@@ -148,29 +149,7 @@ public abstract class Tower : Unit, IHealable
 
     private void RefreshVisuals()
     {
-        if (body == null) return;
-
-        Color c = Data.Color;
-        c.a = IsAlive() ? 1f : DeadAlpha;
-        body.color = c;
-
-        outline.enabled = selected || breach;
-        outline.color = selected ? SelectColor : BreachColor;
-    }
-
-    /// One small dot per tier along the bottom of the tower.
-    private void BuildPips()
-    {
-        if (pips != null) Destroy(pips.gameObject);
-        pips = new GameObject("TierPips").transform;
-        pips.SetParent(transform, false);
-
-        const float size = 0.14f, gap = 0.2f;
-        for (int i = 0; i < Tier; i++)
-        {
-            SpriteRenderer pip = PlaceholderArt.AddChild(pips, "Pip", PlaceholderArt.Circle, Color.white, size,
-                                                         PlaceholderArt.TowerDetailOrder);
-            pip.transform.localPosition = new Vector3((i - (Tier - 1) * 0.5f) * gap, -0.25f, 0f);
-        }
+        if (body != null) body.color = IsAlive() ? bodyColor : bodyColor * deadTint;
+        if (selectedMark != null) selectedMark.SetActive(selected);
     }
 }

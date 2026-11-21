@@ -1,7 +1,8 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-/// Minimap during survival: base, towers, monsters, character, open spawn sides and the camera rectangle.
+/// Minimap during survival: base, towers, lanes (open orange, closed grey), monsters (swarm purple),
+/// the character and the camera rectangle.
 /// Redrawn into a small texture every frame and shown on a RawImage.
 /// Setup: put this on a UI object that stays active, with a RawImage (any size, square) as Image.
 public class MinimapView : MonoBehaviour
@@ -13,10 +14,12 @@ public class MinimapView : MonoBehaviour
 
     [Header("Colours")]
     [SerializeField] private Color32 ground = new Color32(25, 40, 30, 210);
-    [SerializeField] private Color32 closedEdge = new Color32(45, 55, 50, 230);
-    [SerializeField] private Color32 openEdge = new Color32(200, 70, 60, 255);
+    [SerializeField] private Color32 closedLane = new Color32(110, 110, 110, 255);
+    [SerializeField] private Color32 openLane = new Color32(255, 150, 40, 255);
     [SerializeField] private Color32 baseColor = new Color32(255, 255, 255, 255);
+    [Tooltip("Convoy monsters")]
     [SerializeField] private Color32 monsterColor = new Color32(255, 70, 70, 255);
+    [SerializeField] private Color32 swarmColor = new Color32(180, 80, 255, 255);
     [SerializeField] private Color32 playerColor = new Color32(255, 230, 60, 255);
     [SerializeField] private Color32 viewColor = new Color32(255, 255, 255, 160);
     [SerializeField] private Color32 deadTowerColor = new Color32(90, 90, 90, 255);
@@ -55,24 +58,12 @@ public class MinimapView : MonoBehaviour
         GridMap grid = gm.Grid;
         for (int i = 0; i < pixels.Length; i++) pixels[i] = ground;
 
-        // Spawn ring: open sides this loop in openEdge.
-        bool left = false, right = false, top = false, bottom = false;
-        foreach (SpawnSide s in gm.Spawner.SidesFor(gm.CurrentLoop))
+        // Lanes: open this loop in openLane, closed in closedLane.
+        WaveData wave = gm.Spawner.WaveFor(gm.CurrentLoop);
+        foreach (Lane lane in grid.Lanes)
         {
-            if (s == SpawnSide.Left) left = true;
-            else if (s == SpawnSide.Right) right = true;
-            else if (s == SpawnSide.Top) top = true;
-            else bottom = true;
-        }
-        for (int x = 0; x < grid.Width; x++)
-        {
-            FillCell(x, 0, bottom ? openEdge : closedEdge);
-            FillCell(x, grid.Height - 1, top ? openEdge : closedEdge);
-        }
-        for (int y = 1; y < grid.Height - 1; y++)
-        {
-            FillCell(0, y, left ? openEdge : closedEdge);
-            FillCell(grid.Width - 1, y, right ? openEdge : closedEdge);
+            Color32 c = wave.HasConvoyOn(lane.Side) ? openLane : closedLane;
+            foreach (Vector2Int cell in lane.Cells) FillCell(cell.x, cell.y, c);
         }
 
         foreach (Tower t in gm.Builder.Towers)
@@ -81,7 +72,7 @@ public class MinimapView : MonoBehaviour
         foreach (Vector2Int c in gm.Base.Cells) FillCell(c.x, c.y, baseColor);
 
         foreach (Enemy e in Enemy.Active)
-            if (e.IsAlive()) Dot(e.Position, 1, monsterColor);
+            if (e.IsAlive()) Dot(e.Position, 1, e.Group == EnemyGroup.Swarm ? swarmColor : monsterColor);
 
         Dot(gm.Player.Position, 2, playerColor);
         DrawViewRect();

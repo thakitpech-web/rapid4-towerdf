@@ -8,14 +8,26 @@ public enum EnemyType
     Boss
 }
 
-/// A monster that spawns on a map edge and walks to the base along the flow field.
-/// When the next cell is a tower or the base, it stops and attacks it instead of moving.
+/// A monster (GAME_DESIGN.md section 5). Convoy monsters walk their lane cell by cell, then into the base
+/// and attack it; they pass through nothing solid because towers never stand on lanes. Swarm monsters move
+/// straight at the character, slide along towers and the base, and damage the base only while touching it.
 public abstract class Enemy : Unit
 {
     private static readonly List<Enemy> active = new List<Enemy>();
 
     /// Every living enemy in the scene.
     public static IReadOnlyList<Enemy> Active => active;
+
+    [Tooltip("Gem dropped on death. Leave empty for monsters that give no exp.")]
+    [SerializeField] private ExpGem gemPrefab;
+    [Tooltip("Child object (e.g. a purple outline) shown only on swarm monsters")]
+    [SerializeField] private GameObject swarmMarker;
+
+    public EnemyGroup Group { get; private set; }
+
+    /// Convoy only: the lane being walked and the index of the next centre-line point to walk to.
+    public Lane Lane { get; private set; }
+    public int LaneIndex { get; private set; }
 
     public float Speed { get; protected set; }
     public float Damage { get; protected set; }
@@ -27,27 +39,36 @@ public abstract class Enemy : Unit
     /// Collision radius against towers and the base.
     public float Radius => Config.monsterWallRadius;
 
-    /// Flow-field distance to the base from this enemy's cell (lower = further ahead).
-    public float FlowDistance => GameManager.Instance.Flow.DistanceAt(GameManager.Instance.Grid.WorldToCell(Position));
+    /// Convoy: tiles still to walk along the lane (Bolt towers shoot the lowest first). Swarm: infinity.
+    public float LaneDistanceLeft =>
+        Group == EnemyGroup.Convoy && Lane != null ? Lane.DistanceLeft(Position, LaneIndex) : float.PositiveInfinity;
 
-    [Tooltip("Gem dropped on death. Leave empty for monsters that give no exp.")]
-    [SerializeField] private ExpGem gemPrefab;
-
-    // Fixed per monster, so monsters walking the same cells do not stack.
-    private Vector2 cellOffset;
+    // Fixed per monster, so convoy monsters on the same lane do not stack.
+    private Vector2 laneOffset;
 
     /// Fraction of the enemy slow passive this monster receives (the boss overrides this).
     protected virtual float SlowFactor => 1f;
 
+    protected static GridMap Grid => GameManager.Instance.Grid;
+
+    /// True while within touching distance of the base's square.
+    protected bool TouchingBase => Grid.DistanceToBase(Position) <= Radius + Config.monsterContactSlack;
+
     /// Called by EnemySpawner right after Instantiate. HP and damage are already scaled.
-    public void Init(float maxHP, float damage, float speed, int expReward, float bodyRadius, Vector2 cellOffset)
+    /// <paramref name="lane"/> is null for swarm monsters.
+    public void Init(float maxHP, float damage, float speed, int expReward, float bodyRadius,
+                     EnemyGroup group, Lane lane, Vector2 laneOffset)
     {
         RestoreFull(maxHP);
         Damage = damage;
         Speed = speed;
         ExpReward = expReward;
         BodyRadius = bodyRadius;
-        this.cellOffset = cellOffset;
+        Group = group;
+        Lane = lane;
+        LaneIndex = 0;
+        this.laneOffset = laneOffset;
+        if (swarmMarker != null) swarmMarker.SetActive(group == EnemyGroup.Swarm);
     }
 
     protected virtual void OnEnable() => active.Add(this);
@@ -59,31 +80,64 @@ public abstract class Enemy : Unit
         Tick(Time.deltaTime);
     }
 
-    /// Default behaviour: follow the flow field, attacking whatever blocks the next cell.
-    protected virtual void Tick(float dt) => Move(GameManager.Instance.Flow, dt);
+    /// Default behaviour: move for this monster's group.
+    protected virtual void Tick(float dt) => Move(dt);
 
-    /// Steps toward the next flow-field cell. If that cell is a tower or the base, walks up to it and
-    /// calls Attack(target) once touching it. Slowed by the enemy slow passive.
-    public void Move(FlowField field, float dt)
+    public virtual void Move(float dt)
     {
-        GridMap grid = GameManager.Instance.Grid;
-        Vector2Int cell = grid.ClampCell(grid.WorldToCell(Position));
-        Vector2Int next = field.NextStep(cell);
-
-        Unit blocker = grid.BlockerAt(next);
-        if (blocker != null && GridMap.DistanceToCell(Position, next) <= Radius + Config.monsterContactSlack)
-        {
-            Attack(blocker);
-            return;
-        }
-
-        Vector2 target = grid.CellCenter(next) + (blocker == null ? cellOffset : Vector2.zero);
-        float slow = GameManager.Instance.Upgrades.GetModifier(UpgradeType.EnemySlow) * SlowFactor;
-        Vector2 pos = Vector2.MoveTowards(Position, target, Speed * (1f - slow) * dt);
-        transform.position = grid.ResolveCollision(pos, Radius);
+        if (Group == EnemyGroup.Convoy) FollowLane(dt);
+        else ChasePlayer(dt);
     }
 
-    /// Hits a tower or the base that blocks the way.
+    /// Walks the lane's centre line point by point (plus this monster's offset). After the last point,
+    /// walks into the base and attacks it once touching.
+    public void FollowLane(float dt)
+    {
+        if (Lane == null) return;
+        float step = CurrentSpeed * dt;
+
+        while (LaneIndex < Lane.Points.Length && step > 0f)
+        {
+            Vector2 target = Lane.Points[LaneIndex] + laneOffset;
+            float dist = Vector2.Distance(Position, target);
+            if (dist > step)
+            {
+                transform.position = Vector2.MoveTowards(Position, target, step);
+                return;
+            }
+            transform.position = target;
+            step -= dist;
+            LaneIndex++;
+        }
+
+        if (LaneIndex < Lane.Points.Length) return;
+
+        if (TouchingBase)
+        {
+            Attack(GameManager.Instance.Base);
+            return;
+        }
+        Vector2 pos = Vector2.MoveTowards(Position, Grid.BaseCenter, step);
+        transform.position = Grid.ResolveCollision(pos, Radius);
+    }
+
+    /// Moves straight at the character, sliding along towers and the base. Damages the base while touching it.
+    public void ChasePlayer(float dt)
+    {
+        if (TouchingBase) Attack(GameManager.Instance.Base);
+
+        PlayerCharacter player = GameManager.Instance.Player;
+        if (player == null || !player.IsAlive()) return;
+
+        Vector2 pos = Vector2.MoveTowards(Position, player.Position, CurrentSpeed * dt);
+        transform.position = Grid.ResolveCollision(pos, Radius);
+    }
+
+    /// Speed after the enemy slow passive.
+    protected float CurrentSpeed =>
+        Speed * (1f - GameManager.Instance.Upgrades.GetModifier(UpgradeType.EnemySlow) * SlowFactor);
+
+    /// Hits the base, a tower or the character.
     public abstract void Attack(Unit target);
 
     public override void Die()
@@ -95,13 +149,16 @@ public abstract class Enemy : Unit
     }
 
     /// The closest living enemy within range of a point, or null.
-    public static Enemy FindNearest(Vector2 from, float range)
+    public static Enemy FindNearest(Vector2 from, float range) => FindNearest(from, range, null);
+
+    /// The closest living enemy of a group (or any group when null) within range of a point, or null.
+    public static Enemy FindNearest(Vector2 from, float range, EnemyGroup? group)
     {
         Enemy best = null;
         float bestDist = range;
         foreach (Enemy e in active)
         {
-            if (!e.IsAlive()) continue;
+            if (!e.IsAlive() || (group.HasValue && e.Group != group.Value)) continue;
             float d = Vector2.Distance(from, e.Position);
             if (d < bestDist)
             {

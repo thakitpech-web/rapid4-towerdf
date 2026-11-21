@@ -4,8 +4,8 @@ using UnityEngine;
 /// Area damage: fires at the densest cluster in range, equal damage to every enemy in the blast radius.
 public class AoETower : Tower
 {
-    private static readonly Color BlastColor = new Color(1f, 0.6f, 0.2f, 0.45f);
-    private const float BlastSeconds = 0.25f;
+    [Tooltip("Effect shown at the blast point, sized to the blast radius")]
+    [SerializeField] private TimedEffect blastEffect;
 
     /// Tier 3 special (build step 10).
     public bool LeavesFire => false;
@@ -28,7 +28,7 @@ public class AoETower : Tower
         float damage = ModifiedDamage;
         foreach (Enemy e in hits) e.TakeDamage(damage);   // TakeDamage may destroy, so hit a copy
 
-        BlastFlash.Spawn(point, radius, BlastColor, BlastSeconds);
+        TimedEffect.Spawn(blastEffect, point, radius);
         cooldown = 1f / Stats.Rate;
     }
 

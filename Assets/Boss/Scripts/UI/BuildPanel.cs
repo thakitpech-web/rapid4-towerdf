@@ -79,7 +79,7 @@ public class BuildPanel : MonoBehaviour
     private static string Hint(BuildManager builder, Tower selected)
     {
         if (builder.SelectedShopItem.HasValue)
-            return "Tap an empty cell to build. Right-click or Esc to cancel.";
+            return "Tap an empty cell (not a lane) to build. Right-click or Esc to cancel.";
         if (selected != null)
             return $"{selected.Data.DisplayName} T{selected.Tier}: tap an empty cell to move, " +
                    "or a same-type same-tier tower to merge.";

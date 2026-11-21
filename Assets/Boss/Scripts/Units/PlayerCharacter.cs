@@ -33,7 +33,7 @@ public class PlayerCharacter : Unit
     public void ResetForLoop()
     {
         RestoreFull(Config.player.maxHP);
-        transform.position = Config.map.playerStart;
+        transform.position = GameManager.Instance.Grid.PlayerStart;
         attackCooldown = 0f;
         foreach (ActiveSkill s in skills) s.ResetForLoop();
         AttackRateMultiplier = 1f;

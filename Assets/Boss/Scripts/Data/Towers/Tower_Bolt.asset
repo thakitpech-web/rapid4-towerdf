@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Type: 0
   DisplayName: Bolt
+  Prefab: {fileID: 2587754012473160630, guid: 458cc89ebe151b447a49be39b130e095, type: 3}
   Color: {r: 0.35, g: 0.65, b: 1, a: 1}
   BaseCost: 1
   Damage:

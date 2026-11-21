@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-/// Player, base, monster, map, flow field and camera values (GAME_DESIGN.md sections 3 to 6).
+/// Player, base, monster, map and camera values (GAME_DESIGN.md sections 3 to 7).
 /// Values marked "prototype" are not in the design doc and come from the reference prototype.
 [CreateAssetMenu(fileName = "GameConfig", menuName = "One Minute Siege/Game Config")]
 public class GameConfig : ScriptableObject
@@ -32,14 +32,16 @@ public class GameConfig : ScriptableObject
     [Serializable]
     public class MonsterStats
     {
-        [Tooltip("Loop 1 HP before the difficulty preset")] public float hp;
+        [Tooltip("Convoy HP at loop 1 before the difficulty preset (swarm gets a share of it)")] public float hp;
         [Tooltip("Tiles per second")] public float speed;
         public int exp;
         [Tooltip("Melee: damage per second. Ranged: damage per shot.")] public float damage;
         [Tooltip("Ranged only: seconds between shots")] public float attackInterval;
-        [Tooltip("Ranged only: tower search range")] public float shootRange;
-        [Tooltip("Ranged only: shoots the base when this close to it (no tower in range)")] public float baseShootRange;
+        [Tooltip("Ranged only: convoy shoots towers, swarm shoots the character within this range")] public float shootRange;
+        [Tooltip("Ranged convoy only: shoots the base when this close to it (no tower in range)")] public float baseShootRange;
         [Tooltip("Prototype: body radius for hits and contact")] public float bodyRadius;
+        [Tooltip("Ranged only. Not in the doc: shot speed in tiles per second")] public float projectileSpeed;
+        [Tooltip("Ranged only. Not in the doc: a straight shot vanishes after flying this far (tiles)")] public float projectileRange;
     }
 
     [Header("Loop")]
@@ -58,27 +60,24 @@ public class GameConfig : ScriptableObject
     [Tooltip("Seconds before the first spawn")]
     public float spawnStartDelay = 0.4f;
 
+    /// Map layout (GAME_DESIGN.md section 3). Cells and positions are written as in the doc, where y grows
+    /// downward (cell (0,0) is the top-left corner); GridMap flips y into Unity world space (y up).
     [Serializable]
     public class MapSettings
     {
         public int width = 36;
         public int height = 36;
-        [Tooltip("Bottom-left cell of the base")] public Vector2Int baseCell = new Vector2Int(17, 17);
+        [Tooltip("Doc coordinates: top-left cell of the base")] public Vector2Int baseCell = new Vector2Int(17, 17);
         [Tooltip("The base is baseSize x baseSize cells")] public int baseSize = 2;
-        [Tooltip("Width of the spawn ring along the map edge (no towers)")] public int spawnRing = 1;
-        [Tooltip("Width of the reserved ring around the base (no towers)")] public int reservedRing = 1;
-        [Tooltip("Character start position (tiles)")] public Vector2 playerStart = new Vector2(18f, 19.6f);
-    }
+        [Tooltip("Doc coordinates: character start position (tiles)")] public Vector2 playerStart = new Vector2(18f, 19.6f);
 
-    [Serializable]
-    public class FlowFieldSettings
-    {
-        [Tooltip("Seconds between rebuilds during survival (also rebuilt when a tower dies)")]
-        public float rebuildInterval = 0.5f;
-        [Tooltip("Entering a tower cell costs 1 + tower current HP / this")]
-        public float towerHpDivisor = 50f;
-        [Tooltip("Cost multiplier for a diagonal step")]
-        public float diagonalCost = 1.414f;
+        [Tooltip("Doc coordinates: left lane turn points, edge to base. The other lanes are this rotated " +
+                 "90 degrees around the map centre, (x, y) -> (W-1-y, x), in the order top, right, bottom.")]
+        public Vector2Int[] leftLaneTurns =
+        {
+            new Vector2Int(0, 17), new Vector2Int(5, 17), new Vector2Int(5, 9),
+            new Vector2Int(11, 9), new Vector2Int(11, 17), new Vector2Int(16, 17)
+        };
     }
 
     [Serializable]
@@ -105,9 +104,8 @@ public class GameConfig : ScriptableObject
         public float keyPanSpeed = 1.2f;
     }
 
-    [Header("Map, flow field, camera")]
+    [Header("Map and camera")]
     public MapSettings map = new MapSettings();
-    public FlowFieldSettings flowField = new FlowFieldSettings();
     public CameraSettings cameraView = new CameraSettings();
 
     [Header("Build phase")]
@@ -122,19 +120,19 @@ public class GameConfig : ScriptableObject
     [Header("Monsters")]
     public MonsterStats melee = new MonsterStats
     {
-        hp = 30f, speed = 1.5f, exp = 1, damage = 10f, attackInterval = 0f, shootRange = 0f, bodyRadius = 0.26f
+        hp = 24f, speed = 1.5f, exp = 1, damage = 10f, attackInterval = 0f, shootRange = 0f, bodyRadius = 0.26f
     };
     public MonsterStats ranged = new MonsterStats
     {
-        hp = 20f, speed = 1.2f, exp = 2, damage = 6f, attackInterval = 1.5f, shootRange = 3f, baseShootRange = 2.5f,
-        bodyRadius = 0.24f
+        hp = 16f, speed = 1.2f, exp = 2, damage = 6f, attackInterval = 1.5f, shootRange = 3f, baseShootRange = 2.5f,
+        bodyRadius = 0.24f, projectileSpeed = 8f, projectileRange = 4.5f
     };
 
     [Tooltip("Monster collision radius against towers and the base")]
     public float monsterWallRadius = 0.2f;
-    [Tooltip("Each monster aims this far (random, +/-) from cell centres so they do not stack")]
-    public float monsterCellJitter = 0.2f;
-    [Tooltip("Not in the doc: a monster attacks a blocking tower or the base when its edge is this close to it")]
+    [Tooltip("Each convoy monster walks this far (random, +/-) from lane cell centres so they do not stack")]
+    public float convoyLaneOffset = 0.25f;
+    [Tooltip("Not in the doc: a monster counts as touching the base when its edge is this close to it")]
     public float monsterContactSlack = 0.05f;
 
     [Tooltip("Boss receives this fraction of the enemy slow passive")]

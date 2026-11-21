@@ -1,17 +1,14 @@
-using UnityEngine;
+﻿using UnityEngine;
 
-/// Simple generated sprites for placeholder visuals (towers, range circles, route dashes),
+/// Simple generated sprites for placeholder visuals (range circle, place ghost),
 /// plus the sorting orders they use. Sprites are 1 world unit across.
 public static class PlaceholderArt
 {
-    // Sorting orders: grid overlay 1, base 3, monsters 4, character 5, projectiles 6.
-    public const int RouteOrder = 2;
-    public const int TowerOrder = 3;
-    public const int TowerDetailOrder = 4;
-    public const int BlastOrder = 6;
+    // Sorting orders: lane overlay 1, chevrons 2, towers 3 (set in their prefabs), base 3,
+    // monsters 4, character 5, projectiles 6.
     public const int BuildCursorOrder = 7;
 
-    private static Sprite square, circle, ring, squareOutline;
+    private static Sprite square, circle, ring;
 
     /// Filled white square.
     public static Sprite Square => square ? square : square = Make(8, (x, y, n) => 1f);
@@ -21,10 +18,6 @@ public static class PlaceholderArt
 
     /// White circle outline (for range circles).
     public static Sprite Ring => ring ? ring : ring = Make(128, (x, y, n) => Disc(x, y, n, 3f));
-
-    /// White square outline (for selection and breach marks).
-    public static Sprite SquareOutline => squareOutline ? squareOutline : squareOutline = Make(32, (x, y, n) =>
-        x < 3 || y < 3 || x >= n - 3 || y >= n - 3 ? 1f : 0f);
 
     /// A child SpriteRenderer with the given sprite, colour, local scale and sorting order.
     public static SpriteRenderer AddChild(Transform parent, string name, Sprite sprite, Color color, float scale, int order)

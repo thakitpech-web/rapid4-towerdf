@@ -14,9 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   MeleeCount: 60
   RangedCount: 20
-  Sides:
+  ConvoySides:
   - 0
   - 1
-  - 2
+  SwarmPercent: 0.25
+  SwarmFrom: 0
   HasBoss: 0
   BossSpawnTime: 10

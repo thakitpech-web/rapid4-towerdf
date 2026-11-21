@@ -23,13 +23,14 @@ MonoBehaviour:
     height: 36
     baseCell: {x: 17, y: 17}
     baseSize: 2
-    spawnRing: 1
-    reservedRing: 1
-    playerStart: {x: 18, y: 19.6}
-  flowField:
-    rebuildInterval: 0.5
-    towerHpDivisor: 50
-    diagonalCost: 1.414
+    playerStart: {x: 16, y: 18}
+    leftLaneTurns:
+    - {x: 0, y: 17}
+    - {x: 5, y: 17}
+    - {x: 5, y: 9}
+    - {x: 11, y: 9}
+    - {x: 11, y: 17}
+    - {x: 16, y: 17}
   cameraView:
     viewSize: {x: 24, y: 13}
     followSharpness: 8
@@ -58,7 +59,7 @@ MonoBehaviour:
     attackRange: 3.5
     projectileSpeed: 11
   melee:
-    hp: 30
+    hp: 10
     speed: 1.5
     exp: 1
     damage: 10
@@ -66,8 +67,10 @@ MonoBehaviour:
     shootRange: 0
     baseShootRange: 0
     bodyRadius: 0.26
+    projectileSpeed: 0
+    projectileRange: 0
   ranged:
-    hp: 20
+    hp: 16
     speed: 1.2
     exp: 2
     damage: 6
@@ -75,8 +78,10 @@ MonoBehaviour:
     shootRange: 3
     baseShootRange: 2.5
     bodyRadius: 0.24
+    projectileSpeed: 8
+    projectileRange: 4.5
   monsterWallRadius: 0.2
-  monsterCellJitter: 0.2
+  convoyLaneOffset: 0.25
   monsterContactSlack: 0.05
   bossSlowFactor: 0.5
   expCurve:

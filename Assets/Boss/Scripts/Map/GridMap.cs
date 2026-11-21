@@ -1,46 +1,174 @@
 using System;
 using UnityEngine;
 
-/// The tile grid (GAME_DESIGN.md section 3). Cell (x, y) spans x..x+1, y..y+1 in world units.
-/// Holds the base cells, the spawn ring along the map edge, the reserved ring around the base,
-/// and the tower on each cell. Also does circle-vs-cell collision for the character and monsters.
-/// GameManager calls Init before anything reads it.
+/// The tile grid. Cell (x, y) spans x..x+1, y..y+1 in world units (y up).
+/// Owns the base cells, the 4 lanes (from the scene layout, or GameConfig.map) and the tower on each cell,
+/// and does circle-vs-cell collision for the character and swarm monsters. Towers may stand on any cell
+/// except lane cells, base cells and the character's start cell. GameManager calls Init before anything
+/// reads it, and RefreshVisuals when the loop shown on the map changes.
 public class GridMap : MonoBehaviour
 {
-    [Header("Visuals (placeholder overlay)")]
-    [SerializeField] private Color spawnRingColor = new Color(0.9f, 0.25f, 0.2f, 0.25f);
-    [SerializeField] private Color reservedRingColor = new Color(1f, 0.85f, 0.3f, 0.2f);
-    [SerializeField] private int overlaySortingOrder = 1;
+    [Header("Layout")]
+    [Tooltip("Parent of the LanePath objects drawn in the scene. A lane side without a LanePath falls back to " +
+             "the layout in GameConfig.map (the design doc).")]
+    [SerializeField] private Transform layoutRoot;
 
-    private GameConfig.MapSettings settings;
+    [Header("Lane overlay")]
+    [Tooltip("Lanes convoys use in the shown loop")]
+    [SerializeField] private Color laneOpenColor = new Color(1f, 0.6f, 0.15f, 0.55f);
+    [Tooltip("Lanes that are closed in the shown loop")]
+    [SerializeField] private Color laneClosedColor = new Color(0.55f, 0.55f, 0.55f, 0.35f);
+    [SerializeField] private int overlaySortingOrder = 1;
 
     public int Width { get; private set; }
     public int Height { get; private set; }
-
-    /// Tower on each cell (index = y * Width + x), or null.
-    public Tower[] Occupant { get; private set; }
 
     public RectInt BaseCells { get; private set; }
     public Vector2 BaseCenter => BaseCells.center;
     public Rect BaseRect => new Rect(BaseCells.position, BaseCells.size);
 
-    /// Raised when a tower is placed, moved, removed or destroyed.
+    /// Indexed by SpawnSide.
+    public Lane[] Lanes { get; private set; }
+
+    /// Character start position in world space.
+    public Vector2 PlayerStart { get; private set; }
+
+    /// Raised when a tower is placed, moved, removed, destroyed or revived.
     public event Action OnChanged;
+
+    private Tower[] towerAt;        // per cell
+    private int[] laneAt;           // per cell: SpawnSide + 1, or 0
+    private Texture2D overlay;
 
     public void Init(GameConfig config)
     {
-        settings = config.map;
-        Width = settings.width;
-        Height = settings.height;
-        Occupant = new Tower[Width * Height];
-        BaseCells = new RectInt(settings.baseCell, new Vector2Int(settings.baseSize, settings.baseSize));
+        GameConfig.MapSettings m = config.map;
+        Width = m.width;
+        Height = m.height;
+        BaseCells = new RectInt(m.baseCell.x, Height - m.baseCell.y - m.baseSize, m.baseSize, m.baseSize);
+        PlayerStart = new Vector2(m.playerStart.x, Height - m.playerStart.y);
+        towerAt = new Tower[Width * Height];
+
+        BuildLanes(m);
         BuildOverlay();
     }
+
+    // ---------- Layout ----------
+
+    /// The doc lanes in Unity cells, indexed by SpawnSide. The doc's y grows downward, so y is flipped; the
+    /// left lane is rotated 90 degrees around the map centre, (x, y) -> (W-1-y, x), for top, right and bottom.
+    public static Vector2Int[][] DefaultLaneTurns(GameConfig.MapSettings m)
+    {
+        var laneTurns = new Vector2Int[4][];
+        int w = m.width, h = m.height;
+        Vector2Int Flip(Vector2Int d) => new Vector2Int(d.x, h - 1 - d.y);
+        Vector2Int Rotate(Vector2Int d) => new Vector2Int(w - 1 - d.y, d.x);
+
+        SpawnSide[] order = { SpawnSide.Left, SpawnSide.Top, SpawnSide.Right, SpawnSide.Bottom };
+        Vector2Int[] turns = (Vector2Int[])m.leftLaneTurns.Clone();
+        foreach (SpawnSide side in order)
+        {
+            var t = new Vector2Int[turns.Length];
+            for (int i = 0; i < turns.Length; i++) t[i] = Flip(turns[i]);
+            laneTurns[(int)side] = t;
+            for (int i = 0; i < turns.Length; i++) turns[i] = Rotate(turns[i]);
+        }
+        return laneTurns;
+    }
+
+    /// Lanes from the scene (LanePath under Layout Root) where present, else the doc layout (1 tile wide).
+    private void BuildLanes(GameConfig.MapSettings m)
+    {
+        Vector2Int[][] laneTurns = DefaultLaneTurns(m);
+        var lanePoints = new Vector2[4][];
+        var laneWidths = new int[4];
+        for (int s = 0; s < 4; s++)
+        {
+            lanePoints[s] = new Vector2[laneTurns[s].Length];
+            for (int i = 0; i < laneTurns[s].Length; i++) lanePoints[s][i] = CellCenter(laneTurns[s][i]);
+            laneWidths[s] = 1;
+        }
+
+        if (layoutRoot != null)
+            foreach (LanePath path in layoutRoot.GetComponentsInChildren<LanePath>())
+            {
+                lanePoints[(int)path.Side] = path.Points();
+                laneWidths[(int)path.Side] = path.Width;
+            }
+
+        Lanes = new Lane[4];
+        laneAt = new int[Width * Height];
+        foreach (SpawnSide side in (SpawnSide[])Enum.GetValues(typeof(SpawnSide)))
+        {
+            Lane lane = new Lane(side, lanePoints[(int)side], laneWidths[(int)side]);
+            Lanes[(int)side] = lane;
+            if (lane.Points.Length < 2) Debug.LogError($"Lane {side} needs at least 2 turn points.");
+            foreach (Vector2Int c in lane.Cells)
+                if (InBounds(c) && !IsBase(c)) laneAt[Index(c)] = (int)side + 1;
+        }
+    }
+
+#if UNITY_EDITOR
+    /// Inspector menu (⋮ on the Grid Map component): creates LanePath objects for the doc layout under
+    /// Layout Root, to edit by dragging. Replaces any layout objects already there.
+    [ContextMenu("Create Layout From GameConfig")]
+    private void CreateLayoutFromConfig()
+    {
+        GameManager gm = FindFirstObjectByType<GameManager>();
+        if (gm == null || gm.Config == null)
+        {
+            Debug.LogError("No GameManager with a GameConfig in the scene.");
+            return;
+        }
+
+        if (layoutRoot == null)
+        {
+            layoutRoot = new GameObject("MapLayout").transform;
+            layoutRoot.SetParent(transform, false);
+            UnityEditor.Undo.RegisterCreatedObjectUndo(layoutRoot.gameObject, "Create map layout");
+        }
+        UnityEditor.Undo.RecordObject(this, "Create map layout");
+        for (int i = layoutRoot.childCount - 1; i >= 0; i--)
+            UnityEditor.Undo.DestroyObjectImmediate(layoutRoot.GetChild(i).gameObject);
+
+        Vector2Int[][] laneTurns = DefaultLaneTurns(gm.Config.map);
+        foreach (SpawnSide side in (SpawnSide[])Enum.GetValues(typeof(SpawnSide)))
+        {
+            var laneGo = new GameObject($"Lane_{side}");
+            laneGo.transform.SetParent(layoutRoot, false);
+            laneGo.AddComponent<LanePath>().Setup(side);
+            Vector2Int[] turns = laneTurns[(int)side];
+            for (int i = 0; i < turns.Length; i++)
+            {
+                var p = new GameObject($"P{i}");
+                p.transform.SetParent(laneGo.transform, false);
+                p.transform.position = new Vector3(turns[i].x + 0.5f, turns[i].y + 0.5f, 0f);
+            }
+            UnityEditor.Undo.RegisterCreatedObjectUndo(laneGo, "Create map layout");
+        }
+        UnityEditor.EditorUtility.SetDirty(this);
+    }
+
+    /// Draws the map border, the base and the character start so the layout can be edited against them.
+    private void OnDrawGizmos()
+    {
+        GameManager gm = FindFirstObjectByType<GameManager>();
+        if (gm == null || gm.Config == null) return;
+        GameConfig.MapSettings m = gm.Config.map;
+
+        Gizmos.color = new Color(1f, 1f, 1f, 0.5f);
+        Gizmos.DrawWireCube(new Vector3(m.width * 0.5f, m.height * 0.5f, 0f), new Vector3(m.width, m.height, 0f));
+        var baseRect = new Rect(m.baseCell.x, m.height - m.baseCell.y - m.baseSize, m.baseSize, m.baseSize);
+        Gizmos.color = new Color(0.4f, 0.8f, 1f, 0.8f);
+        Gizmos.DrawWireCube(baseRect.center, new Vector3(m.baseSize, m.baseSize, 0f));
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(new Vector3(m.playerStart.x, m.height - m.playerStart.y, 0f), 0.3f);
+    }
+#endif
 
     // ---------- Cells ----------
 
     public int Index(Vector2Int cell) => cell.y * Width + cell.x;
-    public Vector2Int CellAt(int index) => new Vector2Int(index % Width, index / Width);
 
     public bool InBounds(Vector2Int cell) => cell.x >= 0 && cell.y >= 0 && cell.x < Width && cell.y < Height;
 
@@ -53,22 +181,19 @@ public class GridMap : MonoBehaviour
 
     public bool IsBase(Vector2Int cell) => BaseCells.Contains(cell);
 
-    /// The border ring where monsters spawn.
-    public bool IsSpawnRing(Vector2Int cell)
-    {
-        int r = settings.spawnRing;
-        return cell.x < r || cell.y < r || cell.x >= Width - r || cell.y >= Height - r;
-    }
+    public Lane LaneFor(SpawnSide side) => Lanes[(int)side];
 
-    /// The ring around the base where the character starts and monsters reach the base.
-    public bool IsReserved(Vector2Int cell)
-    {
-        int r = settings.reservedRing;
-        RectInt grown = new RectInt(BaseCells.xMin - r, BaseCells.yMin - r, BaseCells.width + 2 * r, BaseCells.height + 2 * r);
-        return grown.Contains(cell) && !IsBase(cell);
-    }
+    /// The lane running through this cell, or null.
+    public Lane LaneAt(Vector2Int cell) => InBounds(cell) && laneAt[Index(cell)] > 0 ? Lanes[laneAt[Index(cell)] - 1] : null;
 
-    public Tower TowerAt(Vector2Int cell) => InBounds(cell) ? Occupant[Index(cell)] : null;
+    /// True where a tower may stand: inside the map, not on a lane, the base or the character's start cell.
+    public bool IsBuildable(Vector2Int cell) =>
+        InBounds(cell) && laneAt[Index(cell)] == 0 && !IsBase(cell) && cell != WorldToCell(PlayerStart);
+
+    /// True for an empty buildable cell.
+    public bool CanBuild(Vector2Int cell) => IsBuildable(cell) && towerAt[Index(cell)] == null;
+
+    public Tower TowerAt(Vector2Int cell) => InBounds(cell) ? towerAt[Index(cell)] : null;
 
     /// A living tower on this cell (destroyed towers stop blocking until reset).
     public Tower LiveTowerAt(Vector2Int cell)
@@ -77,25 +202,13 @@ public class GridMap : MonoBehaviour
         return t != null && t.IsAlive() ? t : null;
     }
 
-    /// True for an empty cell where a tower may be built.
-    public bool CanBuild(Vector2Int cell) =>
-        InBounds(cell) && !IsSpawnRing(cell) && !IsReserved(cell) && !IsBase(cell) && TowerAt(cell) == null;
-
-    /// True if the base or a living tower fills this cell.
+    /// True for base cells and cells with a living tower. Only the character and swarm monsters collide.
     public bool IsBlocked(Vector2Int cell) => InBounds(cell) && (IsBase(cell) || LiveTowerAt(cell) != null);
-
-    /// The unit filling a blocked cell (the base or a living tower), or null.
-    public Unit BlockerAt(Vector2Int cell)
-    {
-        if (!InBounds(cell)) return null;
-        if (IsBase(cell)) return GameManager.Instance.Base;
-        return LiveTowerAt(cell);
-    }
 
     /// Puts a tower on a cell (or clears it with null) and raises OnChanged.
     public void SetOccupant(Vector2Int cell, Tower tower)
     {
-        Occupant[Index(cell)] = tower;
+        towerAt[Index(cell)] = tower;
         NotifyChanged();
     }
 
@@ -103,14 +216,6 @@ public class GridMap : MonoBehaviour
     public void NotifyChanged() => OnChanged?.Invoke();
 
     // ---------- Collision ----------
-
-    /// Shortest distance from a point to a cell's square (0 if inside).
-    public static float DistanceToCell(Vector2 pos, Vector2Int cell)
-    {
-        float dx = Mathf.Max(cell.x - pos.x, 0f, pos.x - (cell.x + 1));
-        float dy = Mathf.Max(cell.y - pos.y, 0f, pos.y - (cell.y + 1));
-        return Mathf.Sqrt(dx * dx + dy * dy);
-    }
 
     /// Shortest distance from a point to the base's square.
     public float DistanceToBase(Vector2 pos)
@@ -121,8 +226,8 @@ public class GridMap : MonoBehaviour
         return Mathf.Sqrt(dx * dx + dy * dy);
     }
 
-    /// Pushes a circle out of every blocked cell it overlaps (circle-vs-cell),
-    /// then keeps it inside the map.
+    /// Pushes a circle out of every blocked cell it overlaps (circle-vs-cell), so it slides along
+    /// towers and the base, then keeps it inside the map.
     public Vector2 ResolveCollision(Vector2 pos, float radius)
     {
         for (int pass = 0; pass < 2; pass++)
@@ -149,10 +254,10 @@ public class GridMap : MonoBehaviour
                 {
                     // Centre is inside the cell: leave through the nearest edge.
                     float left = pos.x - x, right = x + 1 - pos.x, down = pos.y - y, up = y + 1 - pos.y;
-                    float m = Mathf.Min(Mathf.Min(left, right), Mathf.Min(down, up));
-                    if (m == left) pos.x = x - radius;
-                    else if (m == right) pos.x = x + 1 + radius;
-                    else if (m == down) pos.y = y - radius;
+                    float min = Mathf.Min(Mathf.Min(left, right), Mathf.Min(down, up));
+                    if (min == left) pos.x = x - radius;
+                    else if (min == right) pos.x = x + 1 + radius;
+                    else if (min == down) pos.y = y - radius;
                     else pos.y = y + 1 + radius;
                 }
             }
@@ -165,31 +270,37 @@ public class GridMap : MonoBehaviour
 
     // ---------- Visuals ----------
 
-    /// One pixel per cell, tinted for the spawn ring and the reserved ring.
+    /// Recolours lanes (open/closed) for a loop. Called at loop start and when the build phase opens
+    /// (showing the loop about to be played).
+    public void RefreshVisuals(int loop)
+    {
+        WaveData wave = GameManager.Instance.Spawner.WaveFor(loop);
+
+        var pixels = new Color[Width * Height];
+        for (int i = 0; i < pixels.Length; i++)
+        {
+            int lane = laneAt[i];
+            pixels[i] = lane == 0 ? Color.clear
+                      : wave.HasConvoyOn((SpawnSide)(lane - 1)) ? laneOpenColor
+                      : laneClosedColor;
+        }
+        overlay.SetPixels(pixels);
+        overlay.Apply();
+    }
+
     private void BuildOverlay()
     {
-        var tex = new Texture2D(Width, Height, TextureFormat.RGBA32, false)
+        overlay = new Texture2D(Width, Height, TextureFormat.RGBA32, false)
         {
             filterMode = FilterMode.Point,
             wrapMode = TextureWrapMode.Clamp
         };
 
-        var pixels = new Color[Width * Height];
-        for (int i = 0; i < pixels.Length; i++)
-        {
-            Vector2Int cell = CellAt(i);
-            pixels[i] = IsSpawnRing(cell) ? spawnRingColor
-                      : IsReserved(cell) ? reservedRingColor
-                      : Color.clear;
-        }
-        tex.SetPixels(pixels);
-        tex.Apply();
-
-        var overlay = new GameObject("GridOverlay");
-        overlay.transform.SetParent(transform, false);
-        overlay.transform.position = Vector3.zero;
-        var sr = overlay.AddComponent<SpriteRenderer>();
-        sr.sprite = Sprite.Create(tex, new Rect(0, 0, Width, Height), Vector2.zero, 1f);
+        var go = new GameObject("LaneOverlay");
+        go.transform.SetParent(transform, false);
+        go.transform.position = Vector3.zero;
+        var sr = go.AddComponent<SpriteRenderer>();
+        sr.sprite = Sprite.Create(overlay, new Rect(0, 0, Width, Height), Vector2.zero, 1f);
         sr.sortingOrder = overlaySortingOrder;
     }
 }

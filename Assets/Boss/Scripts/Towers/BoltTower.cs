@@ -1,6 +1,7 @@
 using UnityEngine;
 
-/// Single target: shoots the enemy in range with the smallest flow-field distance to the base.
+/// Single target: the convoy monster in range with the fewest lane cells left; with no convoy in range,
+/// the nearest swarm monster.
 public class BoltTower : Tower
 {
     /// Tier 3 special (build step 10).
@@ -13,7 +14,7 @@ public class BoltTower : Tower
         cooldown = Mathf.Max(0f, cooldown - dt);
         if (cooldown > 0f) return;
 
-        Enemy target = SelectClosestToBase();
+        Enemy target = SelectTarget();
         if (target == null) return;
 
         Projectile shot = Instantiate(Data.ProjectilePrefab, transform.position, Quaternion.identity);
@@ -21,21 +22,22 @@ public class BoltTower : Tower
         cooldown = 1f / Stats.Rate;
     }
 
-    public Enemy SelectClosestToBase()
+    public Enemy SelectTarget()
     {
         float range = Stats.Range;
         Enemy best = null;
-        float bestFlow = float.PositiveInfinity;
+        float bestLeft = float.PositiveInfinity;
         foreach (Enemy e in Enemy.Active)
         {
-            if (!e.IsAlive() || Vector2.Distance(Position, e.Position) > range) continue;
-            float flow = e.FlowDistance;
-            if (flow < bestFlow)
+            if (!e.IsAlive() || e.Group != EnemyGroup.Convoy || Vector2.Distance(Position, e.Position) > range)
+                continue;
+            float left = e.LaneDistanceLeft;
+            if (left < bestLeft)
             {
-                bestFlow = flow;
+                bestLeft = left;
                 best = e;
             }
         }
-        return best;
+        return best != null ? best : Enemy.FindNearest(Position, range, EnemyGroup.Swarm);
     }
 }

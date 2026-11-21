@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Type: 1
   DisplayName: Heal
+  Prefab: {fileID: 8142470976198302041, guid: 4930651daf1fcd3449c2f3cf2c0a9601, type: 3}
   Color: {r: 0.35, g: 0.9, b: 0.45, a: 1}
   BaseCost: 2
   Damage:

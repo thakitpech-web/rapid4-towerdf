@@ -2,25 +2,44 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.Serialization;
 
-/// Build phase (GAME_DESIGN.md sections 3 and 10). A tower fills one buildable GridMap cell.
-/// Place: pick a shop item, tap an empty buildable cell. Move: tap a tower, then an empty cell (free).
+/// Build phase. One tower per cell, on any cell except lanes, the base and the character's start cell.
+/// Place: pick a shop item, tap an empty cell. Move: tap a tower, then an empty cell (free).
 /// Merge: tap a tower, then a same-type same-tier tower. Sell: half the total cost, rounded down.
 /// A tap places or selects; a drag pans. Mouse wheel or +/- zooms, WASD pans.
-/// Shows the monster route from the middle of each open side and marks towers it breaks through.
+/// Preview: chevrons along the lanes convoys use next loop, and a pulsing "new" label on lanes opening
+/// for the first time. Lane colours come from GridMap.
 public class BuildManager : MonoBehaviour
 {
-    private static readonly Color DashColor = new Color(1f, 1f, 1f, 0.8f);
     private static readonly Color RangeColor = new Color(1f, 1f, 1f, 0.6f);
     private static readonly Color GhostOk = new Color(0.4f, 1f, 0.4f, 0.45f);
     private static readonly Color GhostBad = new Color(1f, 0.3f, 0.3f, 0.45f);
-    private const float DashLength = 0.45f;
-    private const float DashWidth = 0.09f;
+
+    [Header("Lane preview (prefabs made in the editor)")]
+    [Tooltip("A SpriteRenderer arrow placed along open lanes, rotated to the walking direction")]
+    [SerializeField] private SpriteRenderer chevronPrefab;
+    [Tooltip("Direction the chevron sprite points when not rotated, in degrees (0 = right, 90 = up)")]
+    [SerializeField] private float chevronSpriteAngle;
+    [Tooltip("A chevron every this many tiles along the lane")]
+    [SerializeField, Min(1)] private int chevronSpacing = 3;
+    [Tooltip("Any object (e.g. a world-space TextMeshPro \"NEW\") shown on lanes opening for the first time")]
+    [SerializeField] private GameObject newLabelPrefab;
+    [Tooltip("Tiles from the lane entrance, along the lane, where the label sits")]
+    [FormerlySerializedAs("newLabelCell")]
+    [SerializeField, Min(0f)] private float newLabelDistance = 2f;
+    [Tooltip("Label offset from that point (tiles)")]
+    [SerializeField] private Vector2 newLabelOffset = new Vector2(0f, 0.8f);
+    [Tooltip("Pulses per second for the label and the chevrons of a new lane")]
+    [SerializeField] private float newPulseSpeed = 2f;
+    [Tooltip("Label scale change while pulsing (0.2 = ±20%)")]
+    [SerializeField] private float newPulseScale = 0.2f;
 
     private readonly List<Tower> towers = new List<Tower>();
-    private readonly HashSet<Tower> breached = new HashSet<Tower>();
-    private readonly List<SpriteRenderer> dashes = new List<SpriteRenderer>();
-    private int dashesUsed;
+    private readonly List<SpriteRenderer> chevrons = new List<SpriteRenderer>();
+    private readonly List<SpriteRenderer> newChevrons = new List<SpriteRenderer>();
+    private readonly List<GameObject> labels = new List<GameObject>();
+    private int chevronsUsed, labelsUsed;
     private SpriteRenderer rangeCircle, ghost;
 
     private bool pressing, dragging;
@@ -37,6 +56,9 @@ public class BuildManager : MonoBehaviour
 
     private static GameManager GM => GameManager.Instance;
     private static bool InBuild => GM != null && GM.Phase == GamePhase.Build;
+
+    /// The loop the build phase prepares for (CurrentLoop is already the next one).
+    private static int NextLoop => GM.CurrentLoop;
 
     private void Awake()
     {
@@ -59,7 +81,7 @@ public class BuildManager : MonoBehaviour
     public void EnterBuild()
     {
         ClearSelection();
-        RefreshPreview();
+        DrawPreview(true);
     }
 
     public void ExitBuild()
@@ -74,6 +96,7 @@ public class BuildManager : MonoBehaviour
     public void ResetTowersForLoop()
     {
         foreach (Tower t in towers) t.ResetForLoop();
+        Grid.NotifyChanged();
     }
 
     // ---------- Selection ----------
@@ -109,12 +132,16 @@ public class BuildManager : MonoBehaviour
     {
         TowerData data = DataFor(type);
         if (!InBuild || data == null || !Grid.CanBuild(cell)) return false;
+        if (data.Prefab == null)
+        {
+            Debug.LogError($"{data.name} has no Prefab: assign the tower prefab in the TowerData asset.");
+            return false;
+        }
         if (!GM.TrySpendOrbs(data.TotalCost(1))) return false;
 
         Tower t = CreateTower(data, cell);
         towers.Add(t);
         Grid.SetOccupant(cell, t);
-        RefreshPreview();
         return true;
     }
 
@@ -126,7 +153,6 @@ public class BuildManager : MonoBehaviour
         t.Cell = cell;
         t.transform.position = Grid.CellCenter(cell);
         Grid.SetOccupant(cell, t);
-        RefreshPreview();
     }
 
     /// Merges <paramref name="from"/> into <paramref name="into"/>; the first cell becomes empty.
@@ -136,9 +162,7 @@ public class BuildManager : MonoBehaviour
 
         RemoveTower(from);
         into.SetTier(into.Tier + 1);
-        Grid.NotifyChanged();                   // more HP: higher path cost
         SelectTower(into);
-        RefreshPreview();
         return true;
     }
 
@@ -148,40 +172,18 @@ public class BuildManager : MonoBehaviour
 
         GM.AddOrbs(t.SellValue());
         RemoveTower(t);
-        RefreshPreview();
     }
 
     /// Sell button.
     public void SellSelected() => SellTower(SelectedTower);
 
-    /// Cells monsters from the middle of this side would walk to the base.
-    public List<Vector2Int> PreviewRoute(SpawnSide side)
-    {
-        int w = Grid.Width, h = Grid.Height;
-        Vector2Int start;
-        switch (side)
-        {
-            case SpawnSide.Left: start = new Vector2Int(0, h / 2); break;
-            case SpawnSide.Right: start = new Vector2Int(w - 1, h / 2); break;
-            case SpawnSide.Top: start = new Vector2Int(w / 2, h - 1); break;
-            default: start = new Vector2Int(w / 2, 0); break;
-        }
-        return GM.Flow.TraceRoute(start);
-    }
+    /// Lanes convoys use in a loop (highlighted in the build phase).
+    public List<SpawnSide> PreviewLanes(int loop) => new List<SpawnSide>(GM.Spawner.WaveFor(loop).ConvoySides);
 
     private Tower CreateTower(TowerData data, Vector2Int cell)
     {
-        var go = new GameObject($"{data.DisplayName} Tower");
-        go.transform.SetParent(transform, false);
-        go.transform.position = Grid.CellCenter(cell);
-
-        Tower t;
-        switch (data.Type)
-        {
-            case TowerType.Bolt: t = go.AddComponent<BoltTower>(); break;
-            case TowerType.Heal: t = go.AddComponent<HealTower>(); break;
-            default: t = go.AddComponent<AoETower>(); break;
-        }
+        Tower t = Instantiate(data.Prefab, Grid.CellCenter(cell), Quaternion.identity, transform);
+        t.name = $"{data.DisplayName} Tower";
         t.Init(data, 1, cell);
         return t;
     }
@@ -189,7 +191,6 @@ public class BuildManager : MonoBehaviour
     private void RemoveTower(Tower t)
     {
         if (SelectedTower == t) SelectTower(null);
-        breached.Remove(t);
         towers.Remove(t);
         Grid.SetOccupant(t.Cell, null);
         Destroy(t.gameObject);
@@ -204,6 +205,7 @@ public class BuildManager : MonoBehaviour
         HandleKeys();
         HandlePointer();
         UpdateCursor();
+        PulseNewLanes();
     }
 
     private void HandleKeys()
@@ -278,7 +280,7 @@ public class BuildManager : MonoBehaviour
         if (SelectedShopItem.HasValue)
         {
             if (tapped != null) SelectTower(tapped);
-            else PlaceTower(SelectedShopItem.Value, cell);      // stays picked for placing more
+            else PlaceTower(SelectedShopItem.Value, cell);     // stays picked for placing more
             return;
         }
 
@@ -333,43 +335,73 @@ public class BuildManager : MonoBehaviour
         rangeCircle.enabled = true;
     }
 
-    /// Redraws the dashed routes for the next loop's open sides and the breach marks.
-    private void RefreshPreview() => DrawPreview(InBuild);
-
+    /// Chevrons along next loop's convoy lanes and a "new" label on lanes opening for the first time.
     private void DrawPreview(bool show)
     {
-        foreach (Tower t in breached) t.SetBreachMark(false);
-        breached.Clear();
-        dashesUsed = 0;
+        chevronsUsed = labelsUsed = 0;
+        newChevrons.Clear();
 
         if (show)
         {
-            foreach (SpawnSide side in GM.Spawner.SidesFor(GM.CurrentLoop))
+            foreach (SpawnSide side in PreviewLanes(NextLoop))
             {
-                List<Vector2Int> route = PreviewRoute(side);
-                for (int i = 1; i < route.Count; i++)
+                Lane lane = Grid.LaneFor(side);
+                bool isNew = GM.Spawner.LaneOpensFirstTime(side, NextLoop);
+
+                for (float d = 1f; d < lane.TotalLength; d += chevronSpacing)
                 {
-                    PlaceDash(Grid.CellCenter(route[i - 1]), Grid.CellCenter(route[i]));
-                    Tower t = Grid.LiveTowerAt(route[i]);
-                    if (t != null && breached.Add(t)) t.SetBreachMark(true);
+                    SpriteRenderer c = PlaceChevron(lane, d);
+                    if (c != null && isNew) newChevrons.Add(c);
                 }
+                if (isNew) PlaceLabel(lane);
             }
         }
 
-        for (int i = dashesUsed; i < dashes.Count; i++) dashes[i].enabled = false;
+        for (int i = chevronsUsed; i < chevrons.Count; i++) chevrons[i].gameObject.SetActive(false);
+        for (int i = labelsUsed; i < labels.Count; i++) labels[i].SetActive(false);
     }
 
-    private void PlaceDash(Vector2 a, Vector2 b)
+    private SpriteRenderer PlaceChevron(Lane lane, float distance)
     {
-        if (dashesUsed == dashes.Count)
-            dashes.Add(PlaceholderArt.AddChild(transform, "RouteDash", PlaceholderArt.Square, DashColor, 1f,
-                                               PlaceholderArt.RouteOrder));
+        if (chevronPrefab == null) return null;
+        if (chevronsUsed == chevrons.Count) chevrons.Add(Instantiate(chevronPrefab, transform));
 
-        SpriteRenderer dash = dashes[dashesUsed++];
-        Vector2 d = b - a;
-        dash.transform.position = (a + b) * 0.5f;
-        dash.transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg);
-        dash.transform.localScale = new Vector3(DashLength, DashWidth, 1f);
-        dash.enabled = true;
+        SpriteRenderer c = chevrons[chevronsUsed++];
+        lane.Sample(distance, out Vector2 pos, out Vector2 dir);
+        c.transform.position = pos;
+        c.transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg - chevronSpriteAngle);
+        c.color = chevronPrefab.color;
+        c.gameObject.SetActive(true);
+        return c;
+    }
+
+    private void PlaceLabel(Lane lane)
+    {
+        if (newLabelPrefab == null) return;
+        if (labelsUsed == labels.Count) labels.Add(Instantiate(newLabelPrefab, transform));
+
+        GameObject label = labels[labelsUsed++];
+        lane.Sample(newLabelDistance, out Vector2 pos, out _);
+        label.transform.position = pos + newLabelOffset;
+        label.SetActive(true);
+    }
+
+    private void PulseNewLanes()
+    {
+        float wave = Mathf.Sin(Time.unscaledTime * newPulseSpeed * 2f * Mathf.PI) * 0.5f + 0.5f;   // 0..1
+
+        if (newLabelPrefab != null)
+        {
+            Vector3 baseScale = newLabelPrefab.transform.localScale;
+            for (int i = 0; i < labelsUsed; i++)
+                labels[i].transform.localScale = baseScale * (1f + newPulseScale * (wave * 2f - 1f));
+        }
+
+        if (chevronPrefab != null)
+        {
+            Color c = chevronPrefab.color;
+            c.a *= Mathf.Lerp(0.35f, 1f, wave);
+            foreach (SpriteRenderer sr in newChevrons) sr.color = c;
+        }
     }
 }

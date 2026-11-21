@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   DisplayName: Normal
   HpStart: 1.2
-  HpGrowth: 1.5
+  HpGrowth: 1.3
+  SwarmHpMultiplier: 0.6
   DamageMultiplier: 1.4
   DamageGrowth: 1.15
   BaseHP: 400
-  BossHP: 8000
+  BossHP: 6000

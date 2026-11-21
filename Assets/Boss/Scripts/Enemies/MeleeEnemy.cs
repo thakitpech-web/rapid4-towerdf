@@ -1,7 +1,7 @@
 using UnityEngine;
 
-/// Follows the flow field. If the next cell is a tower or the base, stops and hits it (Damage per second)
-/// until it breaks. Damages the character on contact (Damage per second).
+/// Hits the base for Damage per second while touching it (convoy at the end of its lane, swarm whenever it
+/// touches the base). Damages the character on contact (Damage per second) in both groups.
 public class MeleeEnemy : Enemy
 {
     protected override void Tick(float dt)
