@@ -70,7 +70,7 @@ MonoBehaviour:
     damage: 10
     attackRate: 1.2
     attackRange: 3
-    moveSpeed: 4.5
+    moveSpeed: 10
     pickupRadius: 1
     bodyRadius: 0.26
     projectileSpeed: 13
