@@ -80,7 +80,7 @@ MonoBehaviour:
     attackRange: 3.5
     projectileSpeed: 11
   melee:
-    hp: 10
+    hp: 20
     speed: 1.5
     exp: 1
     damage: 10

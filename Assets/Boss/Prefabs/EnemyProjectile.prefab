@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 6559929901425867192}
   - component: {fileID: 8511860428774585881}
   m_Layer: 0
-  m_Name: Projectile 1
+  m_Name: EnemyProjectile
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -102,5 +102,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   faceDirection: 0
   spriteAngle: 0
+  radius: 0.1
   hitEffect: {fileID: 0}
   hitEffectRadius: 0.2

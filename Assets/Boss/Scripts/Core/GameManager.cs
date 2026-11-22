@@ -203,6 +203,7 @@ public class GameManager : MonoBehaviour
     {
         enemySpawner.ClearAll();
         Projectile.ClearAll();
+        FireZone.ClearAll();
         ExpGem.ClearAll();
         cameraController.FitWholeMap();
         grid.RefreshVisuals(CurrentLoop);       // lanes and pads for the loop about to be played

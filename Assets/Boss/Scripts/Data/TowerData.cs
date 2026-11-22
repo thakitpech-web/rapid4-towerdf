@@ -45,7 +45,20 @@ public class TowerData : ScriptableObject
     [Tooltip("Bolt only")] public Projectile ProjectilePrefab;
     [Tooltip("Bolt only. Not in the doc.")] public float ProjectileSpeed = 12f;
 
+    [Header("Tier 3 special (top tier only)")]
+    [Tooltip("Bolt: pierce also hits the nearest other enemy within this many tiles of the target")]
+    public float PierceRadius = 1.2f;
+    [Tooltip("AoE: fire zone damage per second (zones do not stack)")]
+    public float FireDamagePerSecond = 10f;
+    [Tooltip("AoE: seconds the fire zone lasts")]
+    public float FireDuration = 2f;
+    [Tooltip("Heal: overheal becomes shield, up to this share of the target's max HP")]
+    public float ShieldCap = 0.3f;
+
     public int MaxTier => MaxHP.Length;
+
+    /// True when the tier-3 special is active.
+    public bool HasSpecial(int tier) => tier >= MaxTier;
 
     /// Total orbs spent on a tower of this tier (1 / 2 / 4 × BaseCost).
     public int TotalCost(int tier) => BaseCost << (tier - 1);

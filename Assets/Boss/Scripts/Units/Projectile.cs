@@ -26,14 +26,17 @@ public class Projectile : MonoBehaviour
     private Unit target;
     private Vector2 direction;
     private float damage, speed, distanceLeft;
+    private System.Action<Unit, Vector2> onHit;
 
-    /// Homing shot at one unit.
-    public void Launch(Unit target, float damage, float speed)
+    /// Homing shot at one unit. <paramref name="onHit"/> (optional) runs after the damage, with the unit hit
+    /// and where it stood (e.g. Bolt pierce).
+    public void Launch(Unit target, float damage, float speed, System.Action<Unit, Vector2> onHit = null)
     {
         straight = false;
         this.target = target;
         this.damage = damage;
         this.speed = speed;
+        this.onHit = onHit;
     }
 
     /// Straight shot toward a point; flies up to maxDistance.
@@ -131,8 +134,10 @@ public class Projectile : MonoBehaviour
 
     private void Hit(Unit u)
     {
+        Vector2 at = u.Position;                // read before the hit may destroy it
         u.TakeDamage(damage);
         TimedEffect.Spawn(hitEffect, transform.position, hitEffectRadius);
+        onHit?.Invoke(u, at);
         Destroy(gameObject);
     }
 

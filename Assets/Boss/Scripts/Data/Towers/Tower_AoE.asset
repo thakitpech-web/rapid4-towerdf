@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Tower_AoE
   m_EditorClassIdentifier: 
   Type: 2
-  DisplayName: AoE
+  DisplayName: Bomb
   Prefab: {fileID: 4019428544069108838, guid: 0da942aec71a6a34f8b82ac44c189d6c, type: 3}
   Color: {r: 1, g: 0.6, b: 0.2, a: 1}
   BaseCost: 3
@@ -26,9 +26,9 @@ MonoBehaviour:
   - 0.8
   - 0.8
   Range:
+  - 2
   - 4
   - 6
-  - 8
   Radius:
   - 3
   - 5
@@ -40,3 +40,7 @@ MonoBehaviour:
   Targets: 010000000100000001000000
   ProjectilePrefab: {fileID: 8511860428774585881, guid: fb6aab6261256364594363759d41fbb9, type: 3}
   ProjectileSpeed: 12
+  PierceRadius: 1.2
+  FireDamagePerSecond: 10
+  FireDuration: 2
+  ShieldCap: 0.3

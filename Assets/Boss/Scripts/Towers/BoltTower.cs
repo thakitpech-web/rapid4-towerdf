@@ -1,11 +1,16 @@
 using UnityEngine;
 
 /// Single target: the convoy monster in range with the fewest lane cells left; with no convoy in range,
-/// the nearest swarm monster.
+/// the nearest swarm monster. Tier 3 pierce: each hit also strikes the nearest other enemy within
+/// TowerData.PierceRadius of the target, for the same damage.
 public class BoltTower : Tower
 {
-    /// Tier 3 special (build step 10).
-    public bool Pierce => false;
+    [Tooltip("Optional effect on the enemy struck by pierce")]
+    [SerializeField] private TimedEffect pierceEffect;
+    [Tooltip("Radius passed to the pierce effect (used when its Scale To Radius is on)")]
+    [SerializeField] private float pierceEffectRadius = 0.3f;
+
+    public bool Pierce => Data.HasSpecial(Tier);
 
     private float cooldown;
 
@@ -17,8 +22,10 @@ public class BoltTower : Tower
         Enemy target = SelectTarget();
         if (target == null) return;
 
+        float damage = ModifiedDamage;
         Projectile shot = Instantiate(Data.ProjectilePrefab, transform.position, Quaternion.identity);
-        shot.Launch(target, ModifiedDamage, Data.ProjectileSpeed);
+        if (Pierce) shot.Launch(target, damage, Data.ProjectileSpeed, (hit, at) => PierceFrom(hit, at, damage));
+        else shot.Launch(target, damage, Data.ProjectileSpeed);
         cooldown = 1f / Stats.Rate;
     }
 
@@ -39,5 +46,27 @@ public class BoltTower : Tower
             }
         }
         return best != null ? best : Enemy.FindNearest(Position, range, EnemyGroup.Swarm);
+    }
+
+    /// Strikes the nearest other living enemy within PierceRadius of where the first one was hit.
+    private void PierceFrom(Unit first, Vector2 at, float damage)
+    {
+        Enemy second = null;
+        float bestDist = Data.PierceRadius;
+        foreach (Enemy e in Enemy.Active)
+        {
+            if (e == first || !e.IsAlive()) continue;
+            float d = Vector2.Distance(at, e.Position);
+            if (d <= bestDist)
+            {
+                bestDist = d;
+                second = e;
+            }
+        }
+        if (second == null) return;
+
+        Vector2 pos = second.Position;
+        second.TakeDamage(damage);
+        TimedEffect.Spawn(pierceEffect, pos, pierceEffectRadius);
     }
 }

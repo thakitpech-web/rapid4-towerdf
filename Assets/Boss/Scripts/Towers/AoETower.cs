@@ -7,8 +7,11 @@ public class AoETower : Tower
     [Tooltip("Effect shown at the blast point, sized to the blast radius")]
     [SerializeField] private TimedEffect blastEffect;
 
-    /// Tier 3 special (build step 10).
-    public bool LeavesFire => false;
+    [Tooltip("Tier 3: look of the fire zone, sized so 1 unit of art = the blast diameter; removed when the fire ends")]
+    [SerializeField] private GameObject fireEffect;
+
+    /// Tier 3: each blast leaves a fire zone (TowerData.FireDamagePerSecond for FireDuration seconds).
+    public bool LeavesFire => Data.HasSpecial(Tier);
 
     private float cooldown;
     private readonly List<Enemy> hits = new List<Enemy>();
@@ -29,6 +32,13 @@ public class AoETower : Tower
         foreach (Enemy e in hits) e.TakeDamage(damage);   // TakeDamage may destroy, so hit a copy
 
         TimedEffect.Spawn(blastEffect, point, radius);
+        if (LeavesFire)
+        {
+            // The tower damage passive also boosts the fire.
+            float fireDps = Data.FireDamagePerSecond *
+                            (1f + GameManager.Instance.Upgrades.GetModifier(UpgradeType.TowerDamage));
+            FireZone.Spawn(point, radius, fireDps, Data.FireDuration, fireEffect);
+        }
         cooldown = 1f / Stats.Rate;
     }
 
