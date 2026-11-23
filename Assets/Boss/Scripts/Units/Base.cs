@@ -8,7 +8,7 @@ public class Base : Unit, IHealable
     private float attackCooldown;
 
     public float AttackDamage =>
-        Config.baseStats.damage * (1f + GameManager.Instance.Upgrades.GetModifier(UpgradeType.TowerDamage));
+        Config.baseStats.damage * (1f + GameManager.Instance.Upgrades.GetModifier(UpgradeType.Damage));
     public float AttackRange => Config.baseStats.attackRange;
     public bool IsInvincible { get; set; }                  // set by the Base Invincible skill (step 9)
 

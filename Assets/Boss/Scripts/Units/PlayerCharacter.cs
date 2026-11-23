@@ -17,9 +17,9 @@ public class PlayerCharacter : Unit
     /// Set by the Rapid Fire skill while active.
     public float AttackRateMultiplier { get; set; } = 1f;
 
-    public float MoveSpeed => Config.player.moveSpeed;
-    public float AttackDamage => Config.player.damage * (1f + Modifier(UpgradeType.CharacterDamage));
-    public float AttackRate => Config.player.attackRate * AttackRateMultiplier;
+    public float MoveSpeed => Config.player.moveSpeed * (1f + Modifier(UpgradeType.MoveSpeed));
+    public float AttackDamage => Config.player.damage * (1f + Modifier(UpgradeType.Damage));
+    public float AttackRate => Config.player.attackRate * (1f + Modifier(UpgradeType.AttackSpeed)) * AttackRateMultiplier;
     public float AttackRange => Config.player.attackRange;
     public float PickupRadius => Config.player.pickupRadius * (1f + Modifier(UpgradeType.PickupRadius));
     public float BodyRadius => Config.player.bodyRadius;

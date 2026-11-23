@@ -10,10 +10,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4e8544b2629fbe746bdb35434539a26e, type: 3}
-  m_Name: Passive_TowerDamage
+  m_Name: Passive_MoveSpeed
   m_EditorClassIdentifier: 
-  Name: Tower damage
-  Description: +10% tower and base damage
-  Type: 1
-  ValuePerStack: 0.1
-  MaxStacks: 10
+  Name: Move speed
+  Description: +8% character move speed
+  Type: 3
+  ValuePerStack: 0.08
+  MaxStacks: 5

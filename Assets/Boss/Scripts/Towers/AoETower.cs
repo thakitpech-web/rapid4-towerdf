@@ -34,9 +34,9 @@ public class AoETower : Tower
         TimedEffect.Spawn(blastEffect, point, radius);
         if (LeavesFire)
         {
-            // The tower damage passive also boosts the fire.
+            // The Damage passive also boosts the fire.
             float fireDps = Data.FireDamagePerSecond *
-                            (1f + GameManager.Instance.Upgrades.GetModifier(UpgradeType.TowerDamage));
+                            (1f + GameManager.Instance.Upgrades.GetModifier(UpgradeType.Damage));
             FireZone.Spawn(point, radius, fireDps, Data.FireDuration, fireEffect);
         }
         cooldown = 1f / Stats.Rate;

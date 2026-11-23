@@ -12,9 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fad8912a20c2dcb459c84e606c3197db, type: 3}
   m_Name: GameConfig
   m_EditorClassIdentifier: 
-  loopDuration: 30
+  loopDuration: 60
   maxLosses: 3
-  bonusOrbsPerLoop: 2
+  startingOrbs: 4
+  bonusOrbsPerLoop: 4
   spawnWindow: 50
   spawnCurve: 0.7
   spawnStartDelay: 0.4
@@ -70,7 +71,7 @@ MonoBehaviour:
     damage: 10
     attackRate: 1.2
     attackRange: 3
-    moveSpeed: 10
+    moveSpeed: 5
     pickupRadius: 1
     bodyRadius: 0.26
     projectileSpeed: 13
@@ -80,8 +81,8 @@ MonoBehaviour:
     attackRange: 3.5
     projectileSpeed: 11
   melee:
-    hp: 20
-    speed: 1.5
+    hp: 24
+    speed: 1.2
     exp: 1
     damage: 10
     attackInterval: 0
@@ -92,7 +93,7 @@ MonoBehaviour:
     projectileRange: 0
   ranged:
     hp: 16
-    speed: 1.2
+    speed: 1
     exp: 2
     damage: 6
     attackInterval: 1.5
@@ -106,12 +107,16 @@ MonoBehaviour:
   monsterContactSlack: 0.05
   bossSlowFactor: 0.5
   expCurve:
+  - upToLevel: 5
+    expPerLevel: 12
   - upToLevel: 10
-    expPerLevel: 6
+    expPerLevel: 18
+  - upToLevel: 15
+    expPerLevel: 25
   - upToLevel: 20
-    expPerLevel: 10
+    expPerLevel: 32
   - upToLevel: 999
-    expPerLevel: 14
+    expPerLevel: 40
   upgradeChoices: 3
   gemMagnetSpeed: 10
   gemCollectDistance: 0.5

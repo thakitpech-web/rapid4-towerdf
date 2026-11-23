@@ -13,7 +13,7 @@ public class HealTower : Tower
 
     public override void Act(float dt)
     {
-        float amount = Stats.Damage * dt;   // heal per second; the tower damage passive does not apply
+        float amount = Stats.Damage * dt;   // heal per second; the Damage passive does not apply
         foreach (Unit target in LowestHealthTargets())
         {
             float missing = target.MaxHP - target.HP;

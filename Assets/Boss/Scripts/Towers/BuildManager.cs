@@ -320,7 +320,7 @@ public class BuildManager : MonoBehaviour
             ghost.transform.position = at;
             ghost.color = ok ? GhostOk : GhostBad;
             ghost.enabled = true;
-            ShowRange(at, data.GetStats(1).Range);
+            ShowRange(at, Tower.WithRangeBonus(data.GetStats(1)).Range);
         }
         else if (SelectedTower != null)
         {

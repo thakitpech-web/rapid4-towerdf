@@ -35,7 +35,15 @@ public abstract class Tower : Unit, IHealable
     /// Seconds left disabled (boss shockwave, build step 11).
     public float DisabledTime { get; set; }
 
-    public TowerStats Stats => Data.GetStats(Tier);
+    /// Stats for the current tier, with range raised by the Tower range passive.
+    public TowerStats Stats => WithRangeBonus(Data.GetStats(Tier));
+
+    /// Applies the Tower range passive to a stats block (also used for the build-phase range preview).
+    public static TowerStats WithRangeBonus(TowerStats s)
+    {
+        s.Range *= 1f + GameManager.Instance.Upgrades.GetModifier(UpgradeType.TowerRange);
+        return s;
+    }
 
     private bool selected;
     private Color bodyColor = Color.white;
@@ -128,9 +136,9 @@ public abstract class Tower : Unit, IHealable
     /// Half the total cost, rounded down.
     public int SellValue() => TotalCost() / 2;
 
-    /// Bolt and AoE damage including the tower damage passive (not healing).
+    /// Bolt and AoE damage including the Damage passive (not healing).
     protected float ModifiedDamage =>
-        Stats.Damage * (1f + GameManager.Instance.Upgrades.GetModifier(UpgradeType.TowerDamage));
+        Stats.Damage * (1f + GameManager.Instance.Upgrades.GetModifier(UpgradeType.Damage));
 
     private void Update()
     {

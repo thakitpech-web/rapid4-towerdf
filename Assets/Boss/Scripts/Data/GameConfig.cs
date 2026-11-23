@@ -49,8 +49,10 @@ public class GameConfig : ScriptableObject
     public float loopDuration = 60f;
     [Tooltip("Total losses that end the game")]
     public int maxLosses = 3;
+    [Tooltip("Orbs for the build phase before loop 1")]
+    public int startingOrbs = 4;
     [Tooltip("Free orbs added at the end of every loop (win or loss), on top of the levels gained")]
-    public int bonusOrbsPerLoop = 2;
+    public int bonusOrbsPerLoop = 4;
 
     [Header("Spawn timing (prototype)")]
     [Tooltip("Spawns are spread over roughly this many seconds")]
@@ -164,9 +166,11 @@ public class GameConfig : ScriptableObject
     [Tooltip("Stepped exp curve. The last step applies to every level above it.")]
     public ExpStep[] expCurve =
     {
-        new ExpStep { upToLevel = 10, expPerLevel = 6 },
-        new ExpStep { upToLevel = 20, expPerLevel = 10 },
-        new ExpStep { upToLevel = 999, expPerLevel = 14 },
+        new ExpStep { upToLevel = 5, expPerLevel = 12 },
+        new ExpStep { upToLevel = 10, expPerLevel = 18 },
+        new ExpStep { upToLevel = 15, expPerLevel = 25 },
+        new ExpStep { upToLevel = 20, expPerLevel = 32 },
+        new ExpStep { upToLevel = 999, expPerLevel = 40 },
     };
     [Tooltip("Cards offered on each level-up")]
     public int upgradeChoices = 3;

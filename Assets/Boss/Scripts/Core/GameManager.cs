@@ -95,9 +95,13 @@ public class GameManager : MonoBehaviour
         levelSystem.OnLevelUp -= HandleLevelUp;
     }
 
+    /// The game opens on a build phase before loop 1, with the starting orbs.
     private void Start()
     {
-        StartLoop();
+        AddOrbs(config.startingOrbs);
+        player.ResetForLoop();
+        baseUnit.ResetForLoop(BaseMaxHP);
+        EnterBuildPhase();
     }
 
     private void Update()

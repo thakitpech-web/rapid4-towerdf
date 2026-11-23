@@ -16,6 +16,8 @@ public class BuildPanel : MonoBehaviour
         public TowerData data;
         public Button button;
         [Tooltip("Shows name and cost")] public TMP_Text label;
+        [Tooltip("Optional highlight (e.g. a frame image) shown while this tower is picked")]
+        public GameObject pickedMark;
     }
 
     [SerializeField] private TMP_Text titleText;
@@ -23,10 +25,6 @@ public class BuildPanel : MonoBehaviour
     [SerializeField] private ShopSlot[] shop = new ShopSlot[3];
     [SerializeField] private Button sellButton;
     [SerializeField] private TMP_Text sellLabel;
-
-    [Header("Colours")]
-    [SerializeField] private Color normalButtonColor = Color.white;
-    [SerializeField] private Color pickedButtonColor = new Color(1f, 0.85f, 0.3f, 1f);
 
     public void Show()
     {
@@ -62,10 +60,11 @@ public class BuildPanel : MonoBehaviour
             if (s == null || s.data == null) continue;
             int cost = s.data.TotalCost(1);
             if (s.label != null) s.label.text = $"{s.data.DisplayName}  ({cost})";
-            if (s.button != null)
+            if (s.button != null) s.button.interactable = gm.Orbs >= cost;
+            if (s.pickedMark != null)
             {
-                s.button.interactable = gm.Orbs >= cost;
-                s.button.image.color = builder.SelectedShopItem == s.data.Type ? pickedButtonColor : normalButtonColor;
+                bool picked = builder.SelectedShopItem == s.data.Type;
+                if (s.pickedMark.activeSelf != picked) s.pickedMark.SetActive(picked);
             }
         }
 

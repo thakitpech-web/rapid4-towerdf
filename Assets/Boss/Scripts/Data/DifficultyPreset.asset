@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   DisplayName: Normal
   HpStart: 1.2
-  HpGrowth: 1.4
+  HpGrowth: 1.3
   SwarmHpMultiplier: 0.6
   DamageMultiplier: 1.4
   DamageGrowth: 1.15

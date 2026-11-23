@@ -16,4 +16,4 @@ MonoBehaviour:
   Description: +20% exp pickup radius
   Type: 4
   ValuePerStack: 0.2
-  MaxStacks: 5
+  MaxStacks: 10
