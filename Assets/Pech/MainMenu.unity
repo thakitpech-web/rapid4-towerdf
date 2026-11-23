@@ -592,7 +592,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 69b0ac9ac2a71fc47b3a324b1179f7d3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  tracks: []
+  tracks:
+  - trackName: Main
+    clip: {fileID: 0}
+  - trackName: GamePlay
+    clip: {fileID: 0}
 --- !u!4 &256142278
 Transform:
   m_ObjectHideFlags: 0
@@ -622,7 +626,69 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e680281fb24f27349a5de7724f13f036, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  soundEffects: []
+  soundEffects:
+  - groupID: Player_GotHit
+    clips: []
+  - groupID: Player_GetExp
+    clips: []
+  - groupID: Player_PickUpgrade
+    clips: []
+  - groupID: Player_LevelUp
+    clips: []
+  - groupID: Player_Walk
+    clips: []
+  - groupID: Player_Shoot
+    clips: []
+  - groupID: Player_Death
+    clips: []
+  - groupID: Tower_Merge
+    clips: []
+  - groupID: Tower_Place
+    clips: []
+  - groupID: Tower_BoltShoot
+    clips: []
+  - groupID: Tower_BombShoot
+    clips: []
+  - groupID: Tower_Destroy
+    clips: []
+  - groupID: Tower_Heal
+    clips: []
+  - groupID: Tower_Pick
+    clips: []
+  - groupID: Mon_MeleeGotHit
+    clips: []
+  - groupID: Mon_RangeGotHit
+    clips: []
+  - groupID: Mon_MeleeWalk
+    clips: []
+  - groupID: Mon_RangeShoot
+    clips: []
+  - groupID: Mon_MeleeDeath
+    clips: []
+  - groupID: Mon_RangeDeath
+    clips: []
+  - groupID: Mon_RangeDeath
+    clips: []
+  - groupID: UI_Button
+    clips: []
+  - groupID: UI_Sell
+    clips: []
+  - groupID: Game_LoopStart
+    clips: []
+  - groupID: Game_Win
+    clips: []
+  - groupID: Game_LoopLose
+    clips: []
+  - groupID: Game_Lose
+    clips: []
+  - groupID: Count_3
+    clips: []
+  - groupID: Count_2
+    clips: []
+  - groupID: Count_1
+    clips: []
+  - groupID: Game_Clock
+    clips: []
 --- !u!114 &256142280
 MonoBehaviour:
   m_ObjectHideFlags: 0
