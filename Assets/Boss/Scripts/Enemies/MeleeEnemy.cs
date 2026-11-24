@@ -1,7 +1,7 @@
 using UnityEngine;
 
-/// Hits the base for Damage per second while touching it (convoy at the end of its lane, swarm whenever it
-/// touches the base). Damages the character on contact (Damage per second) in both groups.
+/// Damages the character on contact (Damage per second) in both groups. Walking into the base is handled
+/// by Enemy.EnterBase.
 public class MeleeEnemy : Enemy
 {
     protected override void Tick(float dt)

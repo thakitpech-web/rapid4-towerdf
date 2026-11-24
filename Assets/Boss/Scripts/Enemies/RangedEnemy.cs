@@ -2,8 +2,8 @@ using UnityEngine;
 
 /// Stops and fires a straight shot (Damage on impact, every attack interval) when PickTarget finds something;
 /// otherwise moves. The shot flies toward where the target was, so the character can dodge it.
-/// Convoy: the nearest tower or the character within ShootRange, else the base within BaseShootRange.
-/// Swarm: the character within ShootRange.
+/// Convoy: the nearer of a tower or the character within ShootRange. Swarm: the character within ShootRange.
+/// It never shoots the base: like melee, it walks into it (Enemy.EnterBase).
 public class RangedEnemy : Enemy
 {
     [Tooltip("Shot fired at the target; its hit effect is set on the projectile prefab")]
@@ -12,7 +12,6 @@ public class RangedEnemy : Enemy
     private float attackCooldown;
 
     public float ShootRange => Config.ranged.shootRange;
-    public float BaseShootRange => Config.ranged.baseShootRange;
 
     protected override void Tick(float dt)
     {
@@ -34,8 +33,7 @@ public class RangedEnemy : Enemy
         if (playerInRange && (tower == null ||
                               Vector2.Distance(Position, p.Position) < Vector2.Distance(Position, tower.Position)))
             return p;
-        if (tower != null) return tower;
-        return Grid.DistanceToBase(Position) <= BaseShootRange ? gm.Base : null;
+        return tower;
     }
 
     /// The closest living tower within ShootRange, or null.

@@ -8,9 +8,10 @@ public enum EnemyType
     Boss
 }
 
-/// A monster (GAME_DESIGN.md section 5). Convoy monsters walk their lane cell by cell, then into the base
-/// and attack it; they pass through nothing solid because towers never stand on lanes. Swarm monsters move
-/// straight at the character, slide along towers and the base, and damage the base only while touching it.
+/// A monster (GAME_DESIGN.md section 5). Convoy monsters walk their lane cell by cell, then into the base;
+/// they pass through nothing solid because towers never stand on lanes. Swarm monsters move straight at the
+/// character and slide along towers. Any monster that touches the base deals BaseDamage once and disappears
+/// without dropping exp.
 public abstract class Enemy : Unit
 {
     private static readonly List<Enemy> active = new List<Enemy>();
@@ -32,6 +33,9 @@ public abstract class Enemy : Unit
     public float Speed { get; protected set; }
     public float Damage { get; protected set; }
     public int ExpReward { get; protected set; }
+
+    /// Base HP lost when this monster walks into the base.
+    public float BaseDamage { get; protected set; }
 
     /// Radius used for projectile hits and touching the character.
     public float BodyRadius { get; protected set; }
@@ -56,11 +60,12 @@ public abstract class Enemy : Unit
 
     /// Called by EnemySpawner right after Instantiate. HP and damage are already scaled.
     /// <paramref name="lane"/> is null for swarm monsters.
-    public void Init(float maxHP, float damage, float speed, int expReward, float bodyRadius,
+    public void Init(float maxHP, float damage, float baseDamage, float speed, int expReward, float bodyRadius,
                      EnemyGroup group, Lane lane, Vector2 laneOffset)
     {
         RestoreFull(maxHP);
         Damage = damage;
+        BaseDamage = baseDamage;
         Speed = speed;
         ExpReward = expReward;
         BodyRadius = bodyRadius;
@@ -90,7 +95,7 @@ public abstract class Enemy : Unit
     }
 
     /// Walks the lane's centre line point by point (plus this monster's offset). After the last point,
-    /// walks into the base and attacks it once touching.
+    /// walks into the base and enters it once touching.
     public void FollowLane(float dt)
     {
         if (Lane == null) return;
@@ -114,17 +119,21 @@ public abstract class Enemy : Unit
 
         if (TouchingBase)
         {
-            Attack(GameManager.Instance.Base);
+            EnterBase();
             return;
         }
         Vector2 pos = Vector2.MoveTowards(Position, Grid.BaseCenter, step);
         transform.position = Grid.ResolveCollision(pos, Radius);
     }
 
-    /// Moves straight at the character, sliding along towers and the base. Damages the base while touching it.
+    /// Moves straight at the character, sliding along towers. Enters the base if it touches it.
     public void ChasePlayer(float dt)
     {
-        if (TouchingBase) Attack(GameManager.Instance.Base);
+        if (TouchingBase)
+        {
+            EnterBase();
+            return;
+        }
 
         PlayerCharacter player = GameManager.Instance.Player;
         if (player == null || !player.IsAlive()) return;
@@ -137,8 +146,16 @@ public abstract class Enemy : Unit
     protected float CurrentSpeed =>
         Speed * (1f - GameManager.Instance.Upgrades.GetModifier(UpgradeType.EnemySlow) * SlowFactor);
 
-    /// Hits the base, a tower or the character.
+    /// Hits a tower or the character.
     public abstract void Attack(Unit target);
+
+    /// Deals BaseDamage to the base once and disappears (no exp gem).
+    protected void EnterBase()
+    {
+        Base b = GameManager.Instance.Base;
+        if (b != null && b.IsAlive()) b.TakeDamage(BaseDamage);
+        Destroy(gameObject);
+    }
 
     public override void Die()
     {

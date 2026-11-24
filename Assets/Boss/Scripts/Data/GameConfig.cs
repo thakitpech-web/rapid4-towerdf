@@ -38,7 +38,7 @@ public class GameConfig : ScriptableObject
         [Tooltip("Melee: damage per second. Ranged: damage per shot.")] public float damage;
         [Tooltip("Ranged only: seconds between shots")] public float attackInterval;
         [Tooltip("Ranged only: convoy shoots towers, swarm shoots the character within this range")] public float shootRange;
-        [Tooltip("Ranged convoy only: shoots the base when this close to it (no tower in range)")] public float baseShootRange;
+        [Tooltip("Base HP lost when this monster walks into the base (it then disappears without exp). Scaled by the difficulty preset like damage.")] public float baseDamage;
         [Tooltip("Prototype: body radius for hits and contact")] public float bodyRadius;
         [Tooltip("Ranged only. Not in the doc: shot speed in tiles per second")] public float projectileSpeed;
         [Tooltip("Ranged only. Not in the doc: a straight shot vanishes after flying this far (tiles)")] public float projectileRange;
@@ -137,11 +137,11 @@ public class GameConfig : ScriptableObject
     [Header("Monsters")]
     public MonsterStats melee = new MonsterStats
     {
-        hp = 24f, speed = 1.5f, exp = 1, damage = 10f, attackInterval = 0f, shootRange = 0f, bodyRadius = 0.26f
+        hp = 24f, speed = 1.5f, exp = 1, damage = 10f, attackInterval = 0f, shootRange = 0f, baseDamage = 20f, bodyRadius = 0.26f
     };
     public MonsterStats ranged = new MonsterStats
     {
-        hp = 16f, speed = 1.2f, exp = 2, damage = 6f, attackInterval = 1.5f, shootRange = 3f, baseShootRange = 2.5f,
+        hp = 16f, speed = 1.2f, exp = 2, damage = 6f, attackInterval = 1.5f, shootRange = 3f, baseDamage = 15f,
         bodyRadius = 0.24f, projectileSpeed = 8f, projectileRange = 4.5f
     };
 

@@ -141,6 +141,7 @@ public class EnemySpawner : MonoBehaviour
         enemy.Init(
             DifficultyScaling.EnemyHP(stats.hp, gm.CurrentLoop, gm.Difficulty, group),
             DifficultyScaling.EnemyDamage(stats.damage, gm.CurrentLoop, gm.Difficulty),
+            DifficultyScaling.EnemyDamage(stats.baseDamage, gm.CurrentLoop, gm.Difficulty),
             stats.speed,
             stats.exp,
             stats.bodyRadius,

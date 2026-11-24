@@ -87,7 +87,7 @@ MonoBehaviour:
     damage: 10
     attackInterval: 0
     shootRange: 0
-    baseShootRange: 0
+    baseDamage: 20
     bodyRadius: 0.26
     projectileSpeed: 0
     projectileRange: 0
@@ -98,7 +98,7 @@ MonoBehaviour:
     damage: 6
     attackInterval: 1.5
     shootRange: 3
-    baseShootRange: 2.5
+    baseDamage: 15
     bodyRadius: 0.24
     projectileSpeed: 8
     projectileRange: 4.5
