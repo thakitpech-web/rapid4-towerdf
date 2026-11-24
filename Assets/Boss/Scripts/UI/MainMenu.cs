@@ -16,14 +16,13 @@ public class MainMenu : MonoBehaviour
     public Slider musicSlider;
     public Slider sfxSlider;
 
-    [SerializeField] private string gameplayScene = "Gameplay";
+    [SerializeField] private string gameplayScene = "GamePlay";
 
     private void Start()
     {
         settingPanel.SetActive(false);
         Time.timeScale = 1f; // in case we came back from a paused Game Over
-        // MusicManager.Instance.PlayMusic("MainMenu");
-        
+        MusicManager.Play("Main");
 
         if (PlayerPrefs.HasKey("musicVolume"))
         {
@@ -38,31 +37,30 @@ public class MainMenu : MonoBehaviour
 
     public void PlayGame()
     {
-        SceneFader.FadeTo(gameplayScene);
-        // MusicManager.Instance.PlayMusic("Gameplay");
-        // SoundManager.Instance.PlaySound2D("Button");
+        SoundManager.Play("Button");
+        SceneFader.FadeTo(gameplayScene);   // the GamePlay scene opens on a build phase, which starts its music
     }
 
     public void OpenSetting()
     {
+        SoundManager.Play("Button");
         settingPanel.SetActive(true);
-        // SoundManager.Instance.PlaySound2D("Button");
     }
     public void Close()
     {
+        SoundManager.Play("Button");
         settingPanel.SetActive(false);
-        // SoundManager.Instance.PlaySound2D("Button");
     }
 
     public void BackToMainMenu()
     {
-        // SoundManager.Instance.PlaySound2D("Button");
-        SceneManager.LoadScene("Main");
+        SoundManager.Play("Button");
+        SceneManager.LoadScene("MainMenu");
     }
 
     public void QuitGame()
     {
-        // SoundManager.Instance.PlaySound2D("Button");
+        SoundManager.Play("Button");
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying = false;
 #else

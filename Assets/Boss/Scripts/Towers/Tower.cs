@@ -62,7 +62,7 @@ public abstract class Tower : Unit, IHealable
     }
 
     /// HP bar always (while alive), shield bar while shielded.
-    private void LateUpdate()
+    protected virtual void LateUpdate()
     {
         bool showHp = IsAlive();
         if (hpBar != null && hpBar.activeSelf != showHp) hpBar.SetActive(showHp);
@@ -157,6 +157,7 @@ public abstract class Tower : Unit, IHealable
 
     public override void Die()
     {
+        SoundManager.Play("Tower_Destroy");
         base.Die();
         RefreshVisuals();
         GameManager.Instance.Grid.NotifyChanged();   // stops blocking the character and swarm

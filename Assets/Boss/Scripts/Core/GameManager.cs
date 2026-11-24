@@ -64,6 +64,9 @@ public class GameManager : MonoBehaviour
     private bool pendingEndWon;
     private string pendingEndReason;
 
+    // Whole seconds left last frame, for the end-of-loop clock and 3-2-1 sounds.
+    private int lastSecondsLeft;
+
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -112,6 +115,18 @@ public class GameManager : MonoBehaviour
         if (Phase != GamePhase.Survival) return;  // OnTimeUp may have ended the loop
 
         enemySpawner.Tick(Timer.Elapsed);
+        CountdownSounds();
+    }
+
+    // A clock tick each second from 10 to 4 seconds left, then 3, 2, 1.
+    private void CountdownSounds()
+    {
+        int left = Mathf.CeilToInt(Timer.TimeLeft());
+        if (left == lastSecondsLeft) return;
+        lastSecondsLeft = left;
+
+        if (left >= 1 && left <= 3) SoundManager.Play($"Count_{left}");
+        else if (left >= 4 && left <= 10) SoundManager.Play("Game_Clock");
     }
 
     private void LateUpdate()
@@ -138,6 +153,9 @@ public class GameManager : MonoBehaviour
 
         Phase = GamePhase.Survival;
         uiManager.HidePanels();
+        lastSecondsLeft = Mathf.CeilToInt(Timer.TimeLeft());
+        SoundManager.Play("Game_LoopStart");
+        MusicManager.Play("GamePlay");
     }
 
     /// Ends the current loop. Ignored unless a loop is running.
@@ -173,6 +191,7 @@ public class GameManager : MonoBehaviour
 
         if (won)
         {
+            SoundManager.Play("Game_Win");
             if (CurrentLoop >= TotalLoops)
             {
                 IsVictory = true;
@@ -186,10 +205,12 @@ public class GameManager : MonoBehaviour
             Losses++;
             if (Losses >= MaxLosses)
             {
+                SoundManager.Play("Game_Lose");
                 IsVictory = false;
                 GameOver(reason);
                 return;
             }
+            SoundManager.Play("Game_LoopLose");
         }
 
         Phase = GamePhase.Result;
@@ -209,12 +230,21 @@ public class GameManager : MonoBehaviour
         Projectile.ClearAll();
         FireZone.ClearAll();
         ExpGem.ClearAll();
+
+        // Show everything fresh while building (StartLoop resets them again, so this changes no numbers):
+        // full HP bars, the base back to its undamaged sprite, destroyed towers back to normal colour,
+        // and the character back at its start position.
+        player.ResetForLoop();
+        baseUnit.ResetForLoop(BaseMaxHP);
+        buildManager.ResetTowersForLoop();
+
         cameraController.FitWholeMap();
         grid.RefreshVisuals(CurrentLoop);       // lanes and pads for the loop about to be played
 
         Phase = GamePhase.Build;
         buildManager.EnterBuild();
         uiManager.ShowBuild();
+        MusicManager.Play("BuildTowerMusic");
     }
 
     public void GameOver(string reason)
@@ -240,6 +270,7 @@ public class GameManager : MonoBehaviour
     {
         Phase = GamePhase.LevelUp;
         uiManager.ShowLevelUp(upgradeManager.RollChoices(config.upgradeChoices));
+        SoundManager.Play("Player_LevelUp");
     }
 
     /// Called by the level-up panel when a card is picked.
@@ -248,6 +279,7 @@ public class GameManager : MonoBehaviour
         if (Phase != GamePhase.LevelUp) return;
 
         upgradeManager.Apply(upgrade);
+        SoundManager.Play("Player_PickUpgrade");
         levelSystem.ResolveLevelUp();
         uiManager.HideLevelUp();
 
@@ -260,7 +292,11 @@ public class GameManager : MonoBehaviour
 
     private void HandleTimeUp() => EndLoop(true, $"Survived {Timer.Duration:0} seconds");
     private void HandleBaseDied(Unit _) => EndLoop(false, "The base was destroyed");
-    private void HandlePlayerDied(Unit _) => EndLoop(false, "The character fell");
+    private void HandlePlayerDied(Unit _)
+    {
+        SoundManager.Play("Player_Death");
+        EndLoop(false, "The character fell");
+    }
 
     private void OnDestroy()
     {

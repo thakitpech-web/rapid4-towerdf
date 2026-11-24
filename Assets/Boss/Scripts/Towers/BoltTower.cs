@@ -26,6 +26,7 @@ public class BoltTower : Tower
         Projectile shot = Instantiate(Data.ProjectilePrefab, transform.position, Quaternion.identity);
         if (Pierce) shot.Launch(target, damage, Data.ProjectileSpeed, (hit, at) => PierceFrom(hit, at, damage));
         else shot.Launch(target, damage, Data.ProjectileSpeed);
+        SoundManager.Play("Tower_BoltShoot");
         cooldown = 1f / Stats.Rate;
     }
 

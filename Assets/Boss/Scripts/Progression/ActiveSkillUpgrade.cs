@@ -17,6 +17,8 @@ public class ActiveSkillUpgrade : Upgrade
     [Tooltip("Seconds the effect lasts")] public float Duration = 5f;
     [Tooltip("Seconds from activation until it can be used again")] public float Cooldown = 15f;
     [Tooltip("Rapid Fire: character attack speed multiplier")] public float EffectMultiplier = 2f;
+    [Tooltip("Optional look shown while the skill runs (on the character for Rapid Fire, on the base for Base Invincible). Empty = a placeholder glow.")]
+    public GameObject EffectPrefab;
 
     public override string Tag => $"Active skill · {Key}";
 

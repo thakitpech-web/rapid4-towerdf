@@ -20,11 +20,11 @@ MonoBehaviour:
   Damage:
   - 8
   - 20
-  - 48
+  - 28
   Rate:
-  - 0
-  - 0
-  - 0
+  - 0.5
+  - 0.5
+  - 0.5
   Range:
   - 3.5
   - 4
@@ -40,3 +40,4 @@ MonoBehaviour:
   Targets: 010000000100000002000000
   ProjectilePrefab: {fileID: 0}
   ProjectileSpeed: 12
+  ShieldCap: 0.2

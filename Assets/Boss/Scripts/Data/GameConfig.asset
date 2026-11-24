@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fad8912a20c2dcb459c84e606c3197db, type: 3}
   m_Name: GameConfig
   m_EditorClassIdentifier: 
-  loopDuration: 30
+  loopDuration: 60
   maxLosses: 3
-  startingOrbs: 30
-  bonusOrbsPerLoop: 4
+  startingOrbs: 4
+  bonusOrbsPerLoop: 2
   spawnWindow: 50
   spawnCurve: 0.7
   spawnStartDelay: 0.4
@@ -24,7 +24,7 @@ MonoBehaviour:
     height: 20
     baseCell: {x: 16, y: 9}
     baseSize: 2
-    playerStart: {x: 18.5, y: 8.3}
+    playerStart: {x: 14, y: 10}
     leftLane:
     - {x: 0, y: 10}
     - {x: 5, y: 10}

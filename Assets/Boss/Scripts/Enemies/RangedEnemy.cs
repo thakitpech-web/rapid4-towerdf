@@ -11,6 +11,9 @@ public class RangedEnemy : Enemy
 
     private float attackCooldown;
 
+    protected override string HitSound => "Mon_RangeGotHit";
+    protected override string DeathSound => "Mon_RangeDeath";
+
     public float ShootRange => Config.ranged.shootRange;
 
     protected override void Tick(float dt)
@@ -67,6 +70,7 @@ public class RangedEnemy : Enemy
         {
             target.TakeDamage(Damage);   // no prefab assigned: instant hit
         }
+        SoundManager.Play("Mon_RangeShoot");
         attackCooldown = Config.ranged.attackInterval;
     }
 }

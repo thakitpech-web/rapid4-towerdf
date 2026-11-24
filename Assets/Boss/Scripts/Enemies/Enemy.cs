@@ -186,8 +186,20 @@ public abstract class Enemy : Unit
         Destroy(gameObject);
     }
 
+    /// Sound names in the SoundLibrary for being hit and dying (null = silent).
+    protected virtual string HitSound => null;
+    protected virtual string DeathSound => null;
+
+    public override void TakeDamage(float amount)
+    {
+        if (amount <= 0f || !IsAlive()) return;
+        base.TakeDamage(amount);
+        if (IsAlive()) SoundManager.Play(HitSound);    // the killing hit plays DeathSound instead
+    }
+
     public override void Die()
     {
+        SoundManager.Play(DeathSound);
         base.Die();
         if (ExpReward > 0 && gemPrefab != null)
             Instantiate(gemPrefab, transform.position, Quaternion.identity).Init(ExpReward);

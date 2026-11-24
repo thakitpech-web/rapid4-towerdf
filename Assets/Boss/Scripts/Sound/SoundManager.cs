@@ -39,13 +39,26 @@ public class SoundManager : MonoBehaviour
     // e.g. when pressing Play straight from the Gameplay scene.
     public static void Play(string soundName, float volume = 1f)
     {
-        if (Instance != null) Instance.PlaySound2D(soundName, volume);
+        if (Instance != null && !string.IsNullOrEmpty(soundName)) Instance.PlaySound2D(soundName, volume);
     }
+
+    // Real time each sound last played, for its Min Interval.
+    private readonly System.Collections.Generic.Dictionary<string, float> lastPlayed =
+        new System.Collections.Generic.Dictionary<string, float>();
 
     public void PlaySound2D(string soundName, float volume = 1f)
     {
+        SoundEffect s = sfxLibrary.Find(soundName);
+        if (s == null) return;
+
+        float now = Time.unscaledTime;
+        if (lastPlayed.TryGetValue(soundName, out float last) && now - last < s.minInterval) return;
+
         AudioClip clip = sfxLibrary.GetClipFromName(soundName);
-        if (clip != null) sfx2DSource.PlayOneShot(clip, volume);
+        if (clip == null) return;
+
+        lastPlayed[soundName] = now;
+        sfx2DSource.PlayOneShot(clip, volume * s.volume);
     }
 
     // Looping sound that lives on its owner: it stops by itself when the owner is destroyed.

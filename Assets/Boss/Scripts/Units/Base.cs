@@ -83,9 +83,17 @@ public class Base : Unit, IHealable
     /// Time.time of the last damage taken (the base arrow turns red while it is recent).
     public float LastHitTime { get; private set; } = float.NegativeInfinity;
 
+    /// A hit was stopped by IsInvincible (the Base Invincible skill shows and sounds it).
+    public event System.Action Blocked;
+
     public override void TakeDamage(float amount)
     {
-        if (IsInvincible || amount <= 0f || !IsAlive()) return;
+        if (amount <= 0f || !IsAlive()) return;
+        if (IsInvincible)
+        {
+            Blocked?.Invoke();
+            return;
+        }
         LastHitTime = Time.time;
         base.TakeDamage(amount);
     }

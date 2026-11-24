@@ -33,7 +33,7 @@ public class TowerData : ScriptableObject
 
     [Tooltip("Bolt/AoE: damage per hit. Heal: heal per second.")]
     public float[] Damage = { 10f, 20f, 40f };
-    [Tooltip("Bolt/AoE: attacks per second. Unused by Heal.")]
+    [Tooltip("Bolt/AoE: attacks per second. Heal: heal pulses per second (0.5 = every 2 s; 0 = every frame).")]
     public float[] Rate = { 1f, 1.25f, 1.5f };
     public float[] Range = { 3.5f, 4f, 4.5f };
     [Tooltip("AoE only: blast radius")]

@@ -84,7 +84,7 @@ public class LevelUpPanel : MonoBehaviour
     private void Update()
     {
         Keyboard kb = Keyboard.current;
-        if (kb == null) return;
+        if (kb == null || PauseMenu.IsPaused) return;
 
         if (kb.digit1Key.wasPressedThisFrame) OnCardClicked(0);
         else if (kb.digit2Key.wasPressedThisFrame) OnCardClicked(1);

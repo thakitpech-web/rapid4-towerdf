@@ -4,6 +4,9 @@ using UnityEngine;
 /// by Enemy.EnterBase.
 public class MeleeEnemy : Enemy
 {
+    protected override string HitSound => "Mon_MeleeGotHit";
+    protected override string DeathSound => "Mon_MeleeDeath";
+
     protected override void Tick(float dt)
     {
         base.Tick(dt);

@@ -106,7 +106,11 @@ public class BuildManager : MonoBehaviour
     {
         bool same = SelectedShopItem == type;
         ClearSelection();
-        if (!same) SelectedShopItem = type;
+        if (!same)
+        {
+            SelectedShopItem = type;
+            SoundManager.Play("Tower_Pick");
+        }
     }
 
     public void ClearSelection()
@@ -115,8 +119,9 @@ public class BuildManager : MonoBehaviour
         SelectTower(null);
     }
 
-    private void SelectTower(Tower t)
+    private void SelectTower(Tower t, bool playSound = true)
     {
+        if (playSound && t != null && t != SelectedTower) SoundManager.Play("Tower_Pick");
         if (SelectedTower != null) SelectedTower.SetSelected(false);
         SelectedTower = t;
         if (t != null)
@@ -142,6 +147,7 @@ public class BuildManager : MonoBehaviour
         Tower t = CreateTower(data, cell);
         towers.Add(t);
         Grid.SetOccupant(cell, t);
+        SoundManager.Play("Tower_Place");
         return true;
     }
 
@@ -153,6 +159,7 @@ public class BuildManager : MonoBehaviour
         t.Cell = cell;
         t.transform.position = Grid.CellCenter(cell);
         Grid.SetOccupant(cell, t);
+        SoundManager.Play("Tower_Place");
     }
 
     /// Merges <paramref name="from"/> into <paramref name="into"/>; the first cell becomes empty.
@@ -162,7 +169,8 @@ public class BuildManager : MonoBehaviour
 
         RemoveTower(from);
         into.SetTier(into.Tier + 1);
-        SelectTower(into);
+        SelectTower(into, false);
+        SoundManager.Play("Tower_Merge");
         return true;
     }
 
@@ -172,6 +180,7 @@ public class BuildManager : MonoBehaviour
 
         GM.AddOrbs(t.SellValue());
         RemoveTower(t);
+        SoundManager.Play("UI_Sell");
     }
 
     /// Sell button.
@@ -200,7 +209,7 @@ public class BuildManager : MonoBehaviour
 
     private void Update()
     {
-        if (!InBuild) return;
+        if (!InBuild || PauseMenu.IsPaused) return;
 
         HandleKeys();
         HandlePointer();

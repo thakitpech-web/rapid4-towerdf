@@ -6,7 +6,10 @@ public class UIManager : MonoBehaviour
 {
     public static UIManager Instance { get; private set; }
 
+    [Tooltip("Shown when a loop ends (won or lost) and the run goes on")]
     [SerializeField] private ResultPanel resultPanel;
+    [Tooltip("Shown when the run is over (all loops cleared or too many losses). Empty = use the Result Panel.")]
+    [SerializeField] private ResultPanel gameOverPanel;
     [SerializeField] private BuildPanel buildPanel;
     [SerializeField] private LevelUpPanel levelUpPanel;
 
@@ -28,6 +31,7 @@ public class UIManager : MonoBehaviour
     public void HidePanels()
     {
         resultPanel.Hide();
+        if (gameOverPanel != null) gameOverPanel.Hide();
         buildPanel.Hide();
         levelUpPanel.Hide();
     }
@@ -63,10 +67,11 @@ public class UIManager : MonoBehaviour
         GameManager gm = GameManager.Instance;
         HidePanels();
 
+        ResultPanel panel = gameOverPanel != null ? gameOverPanel : resultPanel;
         if (victory)
-            resultPanel.Show($"All {gm.TotalLoops} loops cleared!", $"{reason}. Losses {gm.Losses}/{gm.MaxLosses}.", "Play again");
+            panel.Show($"All {gm.TotalLoops} loops cleared!", $"{reason}. Losses {gm.Losses}/{gm.MaxLosses}.", "Play again");
         else
-            resultPanel.Show($"{gm.MaxLosses} losses", $"{reason}. The game ended on loop {gm.CurrentLoop}.", "Play again");
+            panel.Show($"{gm.MaxLosses} losses", $"{reason}. The game ended on loop {gm.CurrentLoop}.", "Play again");
     }
 
     public void ShowBuild()

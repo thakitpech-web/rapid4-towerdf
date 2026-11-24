@@ -45,6 +45,7 @@ public class AoETower : Tower
         {
             Projectile bomb = Instantiate(Data.ProjectilePrefab, transform.position, Quaternion.identity);
             bomb.LaunchArc(center, bombFlightTime, bombArcHeight, Blast);
+            SoundManager.Play("Tower_BombShoot");
         }
         else Blast(center.Position);
 
@@ -62,6 +63,7 @@ public class AoETower : Tower
         foreach (Enemy e in hits) e.TakeDamage(damage);   // TakeDamage may destroy, so hit a copy
 
         TimedEffect.Spawn(blastEffect, point, radius);
+        SoundManager.Play("Tower_BombArea");
         if (leavesFire) FireZone.Spawn(point, radius, fireDps, fireDuration, fireEffect);
     }
 

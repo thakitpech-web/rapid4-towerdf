@@ -83,6 +83,12 @@ public class PlayerCharacter : Unit
         Animate(input);
     }
 
+    public override void TakeDamage(float amount)
+    {
+        if (amount > 0f && IsAlive()) SoundManager.Play("Player_GotHit");
+        base.TakeDamage(amount);
+    }
+
     // Tells the Animator where the character walks; the Animator Controller picks the clip.
     private void Animate(Vector2 input)
     {
@@ -109,6 +115,7 @@ public class PlayerCharacter : Unit
     public void CollectExp(ExpGem gem)
     {
         GameManager.Instance.Levels.AddExp(gem.Value);
+        SoundManager.Play("Player_GetExp");
     }
 
     /// Used by the fallback card. The character is not IHealable: heal towers never heal it.
@@ -130,6 +137,7 @@ public class PlayerCharacter : Unit
 
         Projectile shot = Instantiate(projectilePrefab, transform.position, Quaternion.identity);
         shot.Launch(target, AttackDamage, Config.player.projectileSpeed);
+        SoundManager.Play("Player_Shoot");
         attackCooldown = 1f / AttackRate;
     }
 }
