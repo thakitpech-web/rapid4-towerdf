@@ -14,6 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Name: Enemy slow
   Description: 'Monsters move 8% slower (boss: half)'
+  Icon: {fileID: 5762913244157872751, guid: 97ce04a00436ca74f853ebe29a132e97, type: 3}
+  CardFrame: {fileID: 6942964070939493352, guid: 018e79a467b3e554b9853b0913dcffd4, type: 3}
   Type: 0
   ValuePerStack: 0.08
   MaxStacks: 5

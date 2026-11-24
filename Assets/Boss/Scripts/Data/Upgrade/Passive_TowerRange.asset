@@ -14,6 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Name: Tower range
   Description: +8% range for all towers
+  Icon: {fileID: 7856511701433388752, guid: eef2bd84e257c99449cb583df5f54432, type: 3}
+  CardFrame: {fileID: 8800073327682719230, guid: 018e79a467b3e554b9853b0913dcffd4, type: 3}
   Type: 6
   ValuePerStack: 0.08
   MaxStacks: 5

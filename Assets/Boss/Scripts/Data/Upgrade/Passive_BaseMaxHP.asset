@@ -14,6 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Name: Base max HP
   Description: +15% base max HP
+  Icon: {fileID: 8653035334352470289, guid: 97ce04a00436ca74f853ebe29a132e97, type: 3}
+  CardFrame: {fileID: -4802989707507412111, guid: 018e79a467b3e554b9853b0913dcffd4, type: 3}
   Type: 2
   ValuePerStack: 0.15
   MaxStacks: 10

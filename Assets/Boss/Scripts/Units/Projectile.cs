@@ -1,12 +1,14 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-/// A shot. Two kinds:
+/// A shot. Three kinds:
 /// - Homing (Launch): follows one unit and always hits it unless it dies first. Used by the character,
 ///   the base and Bolt towers against monsters.
 /// - Straight (LaunchStraight): flies in a fixed direction and hits the first character, tower or base it
 ///   touches, so it can be dodged. Used by ranged monsters. Vanishes after its max distance.
-/// Damage is dealt on impact.
+/// - Arc (LaunchArc): lobbed up and down onto where a unit stands when it lands. Deals no damage itself;
+///   the caller's onLand does (AoE tower bomb).
+/// Homing and straight damage is dealt on impact.
 public class Projectile : MonoBehaviour
 {
     private static readonly List<Projectile> active = new List<Projectile>();
@@ -21,8 +23,14 @@ public class Projectile : MonoBehaviour
     [SerializeField] private TimedEffect hitEffect;
     [Tooltip("Radius passed to the hit effect (used when its Scale To Radius is on)")]
     [SerializeField] private float hitEffectRadius = 0.2f;
+    [Tooltip("Arc shots: child lifted by the arc height while the root stays on the ground (put a shadow on the root). Empty lifts the whole shot.")]
+    [SerializeField] private Transform arcVisual;
 
-    private bool straight;
+    private bool straight, arc;
+    private Vector2 arcFrom, arcPoint;
+    private Vector3 arcVisualStart;
+    private float arcTime, arcDuration, arcHeight;
+    private System.Action<Vector2> onLand;
     private Unit target;
     private Vector2 direction;
     private float damage, speed, distanceLeft;
@@ -51,6 +59,22 @@ public class Projectile : MonoBehaviour
         Face(direction);
     }
 
+    /// Lobbed shot: flies for flightTime seconds, peaking at height tiles, and lands where the target stands
+    /// at that moment (its last position if it died). onLand runs with the landing point.
+    public void LaunchArc(Unit target, float flightTime, float height, System.Action<Vector2> onLand)
+    {
+        straight = false;
+        arc = true;
+        this.target = target;
+        this.onLand = onLand;
+        arcFrom = transform.position;
+        arcPoint = target != null ? target.Position : arcFrom;
+        arcTime = 0f;
+        arcDuration = Mathf.Max(0.01f, flightTime);
+        arcHeight = height;
+        if (arcVisual != null) arcVisualStart = arcVisual.localPosition;
+    }
+
     private void OnEnable() => active.Add(this);
     private void OnDisable() => active.Remove(this);
 
@@ -65,8 +89,32 @@ public class Projectile : MonoBehaviour
     {
         if (GameManager.Instance == null || GameManager.Instance.Phase != GamePhase.Survival) return;
 
-        if (straight) FlyStraight(speed * Time.deltaTime);
+        if (arc) FlyArc(Time.deltaTime);
+        else if (straight) FlyStraight(speed * Time.deltaTime);
         else FlyHoming(speed * Time.deltaTime);
+    }
+
+    private void FlyArc(float dt)
+    {
+        if (target != null && target.IsAlive()) arcPoint = target.Position;
+
+        arcTime += dt;
+        float t = Mathf.Clamp01(arcTime / arcDuration);
+        Vector2 ground = Vector2.Lerp(arcFrom, arcPoint, t);
+        float lift = 4f * arcHeight * t * (1f - t);     // 0 at both ends, arcHeight at the middle
+
+        if (arcVisual != null)
+        {
+            transform.position = ground;
+            arcVisual.localPosition = arcVisualStart + Vector3.up * lift;
+        }
+        else transform.position = ground + Vector2.up * lift;
+
+        if (t >= 1f)
+        {
+            onLand?.Invoke(ground);
+            Destroy(gameObject);
+        }
     }
 
     private void FlyHoming(float step)

@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fad8912a20c2dcb459c84e606c3197db, type: 3}
   m_Name: GameConfig
   m_EditorClassIdentifier: 
-  loopDuration: 60
+  loopDuration: 30
   maxLosses: 3
-  startingOrbs: 4
+  startingOrbs: 30
   bonusOrbsPerLoop: 4
   spawnWindow: 50
   spawnCurve: 0.7

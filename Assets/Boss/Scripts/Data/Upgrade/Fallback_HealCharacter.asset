@@ -14,4 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Name: Heal
   Description: Heal the character 30% HP
+  Icon: {fileID: -2198779089051837693, guid: eef2bd84e257c99449cb583df5f54432, type: 3}
+  CardFrame: {fileID: 6942964070939493352, guid: 018e79a467b3e554b9853b0913dcffd4, type: 3}
   HealFraction: 0.3

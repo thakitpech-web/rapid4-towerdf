@@ -38,7 +38,7 @@ MonoBehaviour:
   - 600
   - 1200
   Targets: 010000000100000001000000
-  ProjectilePrefab: {fileID: 8511860428774585881, guid: fb6aab6261256364594363759d41fbb9, type: 3}
+  ProjectilePrefab: {fileID: 4842404890349388619, guid: 78e0cd3f271ca9042b0f34e7f5e650e1, type: 3}
   ProjectileSpeed: 12
   PierceRadius: 1.2
   FireDamagePerSecond: 10

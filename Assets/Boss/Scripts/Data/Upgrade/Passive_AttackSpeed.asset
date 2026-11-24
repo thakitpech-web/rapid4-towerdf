@@ -14,6 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Name: Attack speed
   Description: +10% character attack speed
+  Icon: {fileID: -5261659127021537579, guid: 0b89fb3a1837003429697356c358d15b, type: 3}
+  CardFrame: {fileID: -4802989707507412111, guid: 018e79a467b3e554b9853b0913dcffd4, type: 3}
   Type: 5
   ValuePerStack: 0.1
   MaxStacks: 5

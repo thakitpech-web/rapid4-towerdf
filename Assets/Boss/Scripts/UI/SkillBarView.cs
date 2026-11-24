@@ -13,6 +13,7 @@ public class SkillBarView : MonoBehaviour
     private class Slot
     {
         [Tooltip("The slot object; hidden until a skill fills it")] public GameObject root;
+        [Tooltip("Optional: shows the skill card's Icon")] public Image icon;
         public TMP_Text keyText;
         [Tooltip("Skill name when ready, seconds left otherwise")] public TMP_Text infoText;
         [Tooltip("Image Type = Filled (e.g. Vertical, origin Bottom); full right after use")] public Image cooldownFill;
@@ -36,6 +37,11 @@ public class SkillBarView : MonoBehaviour
             s.root.SetActive(show);
             if (!show) continue;
 
+            if (s.icon != null)
+            {
+                s.icon.sprite = skill.Data.Icon;
+                s.icon.enabled = skill.Data.Icon != null;
+            }
             if (s.keyText != null) s.keyText.text = skill.Data.Key;
             if (s.activeFrame != null) s.activeFrame.SetActive(skill.IsActive);
             if (s.cooldownFill != null)

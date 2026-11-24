@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
 
 /// The 1-of-3 card choice. Wire each card Button's OnClick to OnCardClicked with its index (0, 1, 2).
 /// Keys 1, 2, 3 also pick a card.
@@ -15,6 +16,11 @@ public class LevelUpPanel : MonoBehaviour
         public TMP_Text tagText;
         public TMP_Text nameText;
         public TMP_Text descriptionText;
+        [Tooltip("Optional: shows the upgrade's Icon")] public Image icon;
+        [Tooltip("Optional: card background, swapped to the upgrade's Card Frame")] public Image frame;
+
+        [NonSerialized] public Sprite defaultFrame;
+        [NonSerialized] public bool frameCached;
     }
 
     [SerializeField] private TMP_Text titleText;
@@ -41,12 +47,33 @@ public class LevelUpPanel : MonoBehaviour
             cards[i].tagText.text = $"{i + 1} · {u.Tag}";
             cards[i].nameText.text = u.Name;
             cards[i].descriptionText.text = u.Description;
+            ShowArt(cards[i], u);
         }
 
         gameObject.SetActive(true);
     }
 
     public void Hide() => gameObject.SetActive(false);
+
+    // Icon and frame from the upgrade asset. A missing frame falls back to the one set in the scene.
+    private static void ShowArt(Card card, Upgrade u)
+    {
+        if (card.icon != null)
+        {
+            card.icon.sprite = u.Icon;
+            card.icon.enabled = u.Icon != null;
+        }
+
+        if (card.frame != null)
+        {
+            if (!card.frameCached)
+            {
+                card.defaultFrame = card.frame.sprite;
+                card.frameCached = true;
+            }
+            card.frame.sprite = u.CardFrame != null ? u.CardFrame : card.defaultFrame;
+        }
+    }
 
     public void OnCardClicked(int index)
     {

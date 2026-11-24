@@ -21,8 +21,14 @@ public abstract class Enemy : Unit
 
     [Tooltip("Gem dropped on death. Leave empty for monsters that give no exp.")]
     [SerializeField] private ExpGem gemPrefab;
-    [Tooltip("Child object (e.g. a purple outline) shown only on swarm monsters")]
-    [SerializeField] private GameObject swarmMarker;
+    [Tooltip("Animator on the monster or its sprite child. Needs Float parameters MoveX, MoveY and Speed.")]
+    [SerializeField] private Animator animator;
+
+    // Animator parameters: walk direction (kept while standing still) and speed as a fraction of full speed
+    // (0 = stopped, so the walk clip freezes when Speed drives the state's speed multiplier).
+    private static readonly int MoveXParam = Animator.StringToHash("MoveX");
+    private static readonly int MoveYParam = Animator.StringToHash("MoveY");
+    private static readonly int SpeedParam = Animator.StringToHash("Speed");
 
     public EnemyGroup Group { get; private set; }
 
@@ -73,7 +79,6 @@ public abstract class Enemy : Unit
         Lane = lane;
         LaneIndex = 0;
         this.laneOffset = laneOffset;
-        if (swarmMarker != null) swarmMarker.SetActive(group == EnemyGroup.Swarm);
     }
 
     protected virtual void OnEnable() => active.Add(this);
@@ -81,8 +86,32 @@ public abstract class Enemy : Unit
 
     private void Update()
     {
-        if (!IsSurvivalPhase || !IsAlive()) return;
+        if (!IsSurvivalPhase || !IsAlive())
+        {
+            Animate(Vector2.zero, 0f);
+            return;
+        }
+
+        Vector2 before = Position;
         Tick(Time.deltaTime);
+        Animate(Position - before, Time.deltaTime);
+    }
+
+    // Feeds the Animator from how far the monster actually moved this frame, so lane walking, chasing,
+    // sliding along towers and stopping to shoot all animate without each behaviour reporting it.
+    private void Animate(Vector2 moved, float dt)
+    {
+        if (animator == null || !animator.isActiveAndEnabled) return;
+
+        float full = Speed * dt;
+        float speed01 = full > 0f ? Mathf.Clamp01(moved.magnitude / full) : 0f;
+        animator.SetFloat(SpeedParam, speed01);
+        if (moved.sqrMagnitude > 1e-8f)
+        {
+            Vector2 dir = moved.normalized;
+            animator.SetFloat(MoveXParam, dir.x);
+            animator.SetFloat(MoveYParam, dir.y);
+        }
     }
 
     /// Default behaviour: move for this monster's group.

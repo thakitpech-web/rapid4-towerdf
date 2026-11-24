@@ -14,6 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Name: Move speed
   Description: +8% character move speed
+  Icon: {fileID: 4504050618439234760, guid: eef2bd84e257c99449cb583df5f54432, type: 3}
+  CardFrame: {fileID: -2736982464865838157, guid: 018e79a467b3e554b9853b0913dcffd4, type: 3}
   Type: 3
   ValuePerStack: 0.08
   MaxStacks: 5

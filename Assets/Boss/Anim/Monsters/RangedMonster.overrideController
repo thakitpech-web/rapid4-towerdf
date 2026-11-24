@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!221 &22100000
+AnimatorOverrideController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: RangedMonster
+  m_Controller: {fileID: 9100000, guid: 2b08a88496791c941a6e30bbb949f910, type: 2}
+  m_Clips:
+  - m_OriginalClip: {fileID: 7400000, guid: 68fb1644b115d3f4da253c6bdaf563b2, type: 2}
+    m_OverrideClip: {fileID: 7400000, guid: 5173d030884a49a4b852862da723ae9e, type: 2}
+  - m_OriginalClip: {fileID: 7400000, guid: 7dcdc5c02dbedbd47aac627f471b1751, type: 2}
+    m_OverrideClip: {fileID: 7400000, guid: a3ca41531cdb5d94e895f2dc91b731dd, type: 2}
+  - m_OriginalClip: {fileID: 7400000, guid: c2c9435a7d9eb06488c1bb6e66dbf357, type: 2}
+    m_OverrideClip: {fileID: 7400000, guid: 7475bfd7ab65f2c40965c71167ef37f6, type: 2}

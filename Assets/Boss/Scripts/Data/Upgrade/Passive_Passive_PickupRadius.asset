@@ -14,6 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Name: Pickup radius
   Description: +20% exp pickup radius
+  Icon: {fileID: -4907816016340492024, guid: 97ce04a00436ca74f853ebe29a132e97, type: 3}
+  CardFrame: {fileID: 8800073327682719230, guid: 018e79a467b3e554b9853b0913dcffd4, type: 3}
   Type: 4
   ValuePerStack: 0.2
   MaxStacks: 10

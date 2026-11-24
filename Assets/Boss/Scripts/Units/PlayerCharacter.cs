@@ -9,6 +9,14 @@ public class PlayerCharacter : Unit
     [SerializeField] private InputActionReference moveAction;
     [SerializeField] private Projectile projectilePrefab;
 
+    [Tooltip("Animator on the character or its sprite child. Needs Float parameters MoveX, MoveY and Speed.")]
+    [SerializeField] private Animator animator;
+
+    // Animator parameters: the walk direction (kept while standing still) and how fast the stick is pushed (0..1).
+    private static readonly int MoveXParam = Animator.StringToHash("MoveX");
+    private static readonly int MoveYParam = Animator.StringToHash("MoveY");
+    private static readonly int SpeedParam = Animator.StringToHash("Speed");
+
     private float attackCooldown;
     private readonly List<ActiveSkill> skills = new List<ActiveSkill>();
 
@@ -63,10 +71,30 @@ public class PlayerCharacter : Unit
 
     private void Update()
     {
-        if (!IsSurvivalPhase || !IsAlive()) return;
+        if (!IsSurvivalPhase || !IsAlive())
+        {
+            Animate(Vector2.zero);
+            return;
+        }
 
-        Move(moveAction != null ? moveAction.action.ReadValue<Vector2>() : Vector2.zero);
+        Vector2 input = moveAction != null ? moveAction.action.ReadValue<Vector2>() : Vector2.zero;
+        Move(input);
         AutoAttack();
+        Animate(input);
+    }
+
+    // Tells the Animator where the character walks; the Animator Controller picks the clip.
+    private void Animate(Vector2 input)
+    {
+        if (animator == null || !animator.isActiveAndEnabled) return;
+
+        input = Vector2.ClampMagnitude(input, 1f);
+        animator.SetFloat(SpeedParam, input.magnitude);
+        if (input.sqrMagnitude > 0.0001f)
+        {
+            animator.SetFloat(MoveXParam, input.x);
+            animator.SetFloat(MoveYParam, input.y);
+        }
     }
 
     public void Move(Vector2 dir)

@@ -42,7 +42,8 @@ public class TowerData : ScriptableObject
     [Tooltip("Heal only: targets healed at once")]
     public int[] Targets = { 1, 1, 1 };
 
-    [Tooltip("Bolt only")] public Projectile ProjectilePrefab;
+    [Tooltip("Bolt: the homing shot. AoE: the lobbed bomb (empty = the blast happens at once).")]
+    public Projectile ProjectilePrefab;
     [Tooltip("Bolt only. Not in the doc.")] public float ProjectileSpeed = 12f;
 
     [Header("Tier 3 special (top tier only)")]

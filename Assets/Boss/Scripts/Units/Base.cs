@@ -5,6 +5,12 @@ public class Base : Unit, IHealable
 {
     [SerializeField] private Projectile projectilePrefab;
 
+    [Header("Damage look")]
+    [Tooltip("Main sprite of the base")]
+    [SerializeField] private SpriteRenderer body;
+    [Tooltip("Body sprite by HP, from full to ruined. With 4 sprites: >75%, >50%, >25%, 25% and below. Empty keeps the Body sprite.")]
+    [SerializeField] private Sprite[] damageStages;
+
     private float attackCooldown;
 
     public float AttackDamage =>
@@ -43,8 +49,22 @@ public class Base : Unit, IHealable
 
     private void Update()
     {
+        RefreshDamageLook();
         if (!IsSurvivalPhase || !IsAlive()) return;
         AutoAttack();
+    }
+
+    // Picks the damage stage sprite for the current HP (runs every frame so heals and loop resets show too).
+    private void RefreshDamageLook()
+    {
+        if (body == null || damageStages == null || damageStages.Length == 0) return;
+
+        int n = damageStages.Length;
+        float lost = maxHP > 0f ? 1f - hp / maxHP : 0f;
+        int stage = Mathf.Clamp(Mathf.FloorToInt(lost * n), 0, n - 1);
+
+        Sprite s = damageStages[stage];
+        if (s != null && body.sprite != s) body.sprite = s;
     }
 
     public void AutoAttack()

@@ -10,13 +10,9 @@ public class UIManager : MonoBehaviour
     [SerializeField] private BuildPanel buildPanel;
     [SerializeField] private LevelUpPanel levelUpPanel;
 
-    [Header("Survival overlays (they show and hide themselves)")]
-    [SerializeField] private MinimapView minimap;
-    [SerializeField] private EdgeArrow baseArrow;
+    [Header("Survival overlay (shows and hides itself)")]
     [SerializeField] private SkillBarView skillBar;
 
-    public MinimapView Minimap => minimap;
-    public EdgeArrow BaseArrow => baseArrow;
     public SkillBarView SkillBar => skillBar;
 
     private void Awake()
